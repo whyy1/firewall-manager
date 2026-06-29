@@ -106,6 +106,28 @@ const columns = computed(() => [
     },
   },
   {
+    title: '本地地址',
+    key: 'localAddr',
+    width: 140,
+    minWidth: 80,
+    ellipsis: {tooltip: true},
+    render(row) {
+      const val = row.localAddr || 'Any'
+      return h('span', {style: {color: '#888', fontSize: '12px'}}, val === 'Any' ? '任意' : val)
+    },
+  },
+  {
+    title: '远程地址',
+    key: 'remoteAddr',
+    width: 140,
+    minWidth: 80,
+    ellipsis: {tooltip: true},
+    render(row) {
+      const val = row.remoteAddr || 'Any'
+      return h('span', {style: {color: '#888', fontSize: '12px'}}, val === 'Any' ? '任意' : val === 'LocalSubnet' ? '本地子网' : val)
+    },
+  },
+  {
     title: '本地端口',
     key: 'localPort',
     width: 90,

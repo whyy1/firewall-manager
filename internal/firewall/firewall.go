@@ -179,6 +179,12 @@ func parseRules(output string, direction RuleDirection) ([]FirewallRule, error) 
 		case strings.HasPrefix(lower, "program:") || strings.HasPrefix(lower, "程序:"):
 			current.Program = extractValue(line)
 
+		case strings.HasPrefix(lower, "local ip:") || strings.HasPrefix(lower, "本地 ip:"):
+			current.LocalAddr = strings.TrimSpace(extractValue(line))
+
+		case strings.HasPrefix(lower, "remote ip:") || strings.HasPrefix(lower, "远程 ip:"):
+			current.RemoteAddr = strings.TrimSpace(extractValue(line))
+
 		case strings.HasPrefix(lower, "protocol:") || strings.HasPrefix(lower, "协议:"):
 			current.Protocol = strings.TrimSpace(extractValue(line))
 

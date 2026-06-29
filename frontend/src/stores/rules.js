@@ -13,12 +13,14 @@ export const store = reactive({
   get filteredRules() {
     let result = this.rules
 
-    // 搜索过滤（名称、程序、端口）
+    // 搜索过滤（名称、程序、端口、地址）
     if (this.searchQuery) {
       const q = this.searchQuery.toLowerCase()
       result = result.filter(r =>
         r.name.toLowerCase().includes(q) ||
         r.program.toLowerCase().includes(q) ||
+        r.localAddr.toLowerCase().includes(q) ||
+        r.remoteAddr.toLowerCase().includes(q) ||
         r.localPort.toLowerCase().includes(q) ||
         r.remotePort.toLowerCase().includes(q) ||
         r.protocol.toLowerCase().includes(q)
