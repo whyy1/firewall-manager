@@ -1,19 +1,181 @@
-# README
+# 防火墙管理器 / Firewall Manager
 
-## About
+<p align="center">
+  <img src="build/appicon.png" width="120" alt="logo"/>
+</p>
 
-This is the official Wails Vue template.
+<p align="center">
+  轻量、美观的 Windows 防火墙规则管理桌面工具
+</p>
 
-You can configure the project by editing `wails.json`. More information about the project settings can be found
-here: https://wails.io/docs/reference/project-config
+<p align="center">
+  <img src="https://img.shields.io/badge/platform-Windows-blue" alt="platform"/>
+  <img src="https://img.shields.io/badge/go-1.24+-00ADD8?logo=go" alt="go"/>
+  <img src="https://img.shields.io/badge/vue-3-42b883?logo=vue.js" alt="vue"/>
+  <img src="https://img.shields.io/badge/wails-v2-111111" alt="wails"/>
+  <img src="https://img.shields.io/github/license/whyy1/firewall-manager" alt="license"/>
+</p>
 
-## Live Development
+---
 
-To run in live development mode, run `wails dev` in the project directory. This will run a Vite development
-server that will provide very fast hot reload of your frontend changes. If you want to develop in a browser
-and have access to your Go methods, there is also a dev server that runs on http://localhost:34115. Connect
-to this in your browser, and you can call your Go code from devtools.
+[English](#english) | [中文](#中文)
 
-## Building
+## 中文
 
-To build a redistributable, production mode package, use `wails build`.
+### 简介
+
+每次修改 Windows 防火墙规则都要打开控制面板层层点击？这个工具帮你解决。
+
+一个基于 [Wails v2](https://wails.io) 开发的 Windows 防火墙管理桌面应用，界面简洁，中文友好，打包为单个 exe 文件，无需安装。
+
+### 功能
+
+- 🔍 **规则浏览** — 查看所有入站/出站防火墙规则
+- ✏️ **规则管理** — 添加、编辑、删除、启用/禁用规则
+- 🔎 **智能搜索** — 按名称、程序、端口、协议搜索过滤
+- 🎯 **筛选器** — 按动作（允许/阻止）、状态（启用/禁用）快速筛选
+- 🚫 **快捷阻止** — 一键阻止指定程序联网
+- ✅ **快捷放行** — 一键放行指定程序联网
+
+### 截图
+
+<p align="center">
+  <img src="docs/screenshot.png" width="700" alt="screenshot"/>
+</p>
+
+### 下载
+
+前往 [Releases](https://github.com/whyy1/firewall-manager/releases) 页面下载最新版本。
+
+### 从源码构建
+
+**环境要求：**
+- Go 1.24+
+- Node.js 18+
+- Wails CLI v2
+
+```bash
+# 安装 Wails CLI
+go install github.com/wailsapp/wails/v2/cmd/wails@latest
+
+# 克隆项目
+git clone https://github.com/whyy1/firewall-manager.git
+cd firewall-manager
+
+# 安装前端依赖
+cd frontend && npm install && cd ..
+
+# 开发模式
+wails dev
+
+# 生产构建
+wails build
+```
+
+构建产物位于 `build/bin/firewall-manager.exe`。
+
+> ⚠️ 防火墙操作需要管理员权限，程序启动时会自动请求 UAC 提权。
+
+### 技术栈
+
+| 层级 | 技术 |
+|------|------|
+| 框架 | [Wails v2](https://wails.io) |
+| 后端 | Go + netsh advfirewall |
+| 前端 | Vue 3 + Vite + [Naive UI](https://www.naiveui.com) |
+| 图标 | Ionicons 5 |
+
+### 项目结构
+
+```
+├── main.go / app.go           # Wails 入口与前端绑定
+├── internal/
+│   ├── firewall/              # 防火墙操作封装
+│   └── admin/                 # 管理员权限检测
+├── frontend/
+│   └── src/
+│       ├── components/        # Vue 组件
+│       ├── stores/            # 状态管理
+│       └── styles/            # 全局样式
+└── build/                     # 构建资源与打包配置
+```
+
+---
+
+## English
+
+### About
+
+A lightweight, elegant desktop tool for managing Windows Firewall rules, built with [Wails v2](https://wails.io).
+
+No more digging through Control Panel — manage all your firewall rules from a single, clean interface.
+
+### Features
+
+- 🔍 **Browse Rules** — View all inbound/outbound firewall rules
+- ✏️ **Manage Rules** — Add, edit, delete, enable/disable rules
+- 🔎 **Smart Search** — Filter by name, program path, port, or protocol
+- 🎯 **Filters** — Quick filter by action (allow/block) and status (enabled/disabled)
+- 🚫 **Quick Block** — One-click block internet access for any program
+- ✅ **Quick Allow** — One-click allow internet access for any program
+
+### Download
+
+Go to the [Releases](https://github.com/whyy1/firewall-manager/releases) page to download the latest version.
+
+### Build from Source
+
+**Requirements:**
+- Go 1.24+
+- Node.js 18+
+- Wails CLI v2
+
+```bash
+# Install Wails CLI
+go install github.com/wailsapp/wails/v2/cmd/wails@latest
+
+# Clone the project
+git clone https://github.com/whyy1/firewall-manager.git
+cd firewall-manager
+
+# Install frontend dependencies
+cd frontend && npm install && cd ..
+
+# Development mode
+wails dev
+
+# Production build
+wails build
+```
+
+The output binary will be at `build/bin/firewall-manager.exe`.
+
+> ⚠️ Firewall operations require administrator privileges. The app will request UAC elevation on startup.
+
+### Tech Stack
+
+| Layer | Technology |
+|-------|------------|
+| Framework | [Wails v2](https://wails.io) |
+| Backend | Go + netsh advfirewall |
+| Frontend | Vue 3 + Vite + [Naive UI](https://www.naiveui.com) |
+| Icons | Ionicons 5 |
+
+### Project Structure
+
+```
+├── main.go / app.go           # Wails entry point & frontend bindings
+├── internal/
+│   ├── firewall/              # Firewall operations (netsh wrapper)
+│   └── admin/                 # Admin privilege detection
+├── frontend/
+│   └── src/
+│       ├── components/        # Vue components
+│       ├── stores/            # State management
+│       └── styles/            # Global styles
+└── build/                     # Build assets & packaging config
+```
+
+## License
+
+[MIT](LICENSE)
