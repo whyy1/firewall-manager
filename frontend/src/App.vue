@@ -1,21 +1,43 @@
 <script setup>
-import HelloWorld from './components/HelloWorld.vue'</script>
+import {NConfigProvider, NMessageProvider, NDialogProvider, darkTheme} from 'naive-ui'
+import AppLayout from './components/AppLayout.vue'
+</script>
 
 <template>
-  <img id="logo" alt="Wails logo" src="./assets/images/logo-universal.png"/>
-  <HelloWorld/>
+  <NConfigProvider :theme="darkTheme" :theme-overrides="themeOverrides">
+    <NMessageProvider>
+      <NDialogProvider>
+        <AppLayout/>
+      </NDialogProvider>
+    </NMessageProvider>
+  </NConfigProvider>
 </template>
 
+<script>
+export default {
+  data() {
+    return {
+      themeOverrides: {
+        common: {
+          primaryColor: '#4361ee',
+          primaryColorHover: '#5a7bff',
+          primaryColorPressed: '#3451de',
+          bodyColor: '#121218',
+          cardColor: '#1a1a24',
+          modalColor: '#1e1e2a',
+          popoverColor: '#1e1e2a',
+          borderRadius: '8px',
+        },
+      }
+    }
+  }
+}
+</script>
+
 <style>
-#logo {
-  display: block;
-  width: 50%;
-  height: 50%;
-  margin: auto;
-  padding: 10% 0 0;
-  background-position: center;
-  background-repeat: no-repeat;
-  background-size: 100% 100%;
-  background-origin: content-box;
+/* 覆盖 Naive UI 默认字体 */
+.n-config-provider {
+  width: 100%;
+  height: 100%;
 }
 </style>
