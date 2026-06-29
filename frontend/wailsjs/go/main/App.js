@@ -18,8 +18,8 @@ export function DeleteRule(arg1) {
   return window['go']['main']['App']['DeleteRule'](arg1);
 }
 
-export function GetRules(arg1) {
-  return window['go']['main']['App']['GetRules'](arg1);
+export function GetRules(arg1, arg2) {
+  return window['go']['main']['App']['GetRules'](arg1, arg2);
 }
 
 export function IsAdmin() {

@@ -1,5 +1,5 @@
 <script setup>
-import {onMounted, ref} from 'vue'
+import {onMounted, ref, watch} from 'vue'
 import {store} from '../stores/rules.js'
 import {NIcon} from 'naive-ui'
 import {
@@ -18,6 +18,14 @@ import {IsAdmin} from '../../wailsjs/go/main/App'
 const isAdmin = ref(false)
 const showEditor = ref(false)
 const editingRule = ref(null)
+const searchInput = ref('')
+let searchTimer = null
+
+// 防抖：300ms 后才更新 store
+watch(searchInput, (val) => {
+  clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => store.setSearch(val), 300)
+})
 const blockDialog = ref(null)
 const allowDialog = ref(null)
 
@@ -55,12 +63,12 @@ function handleDirectionChange(dir) {
       </div>
       <div class="header-right">
         <n-input
-          v-model:value="store.searchQuery"
-          placeholder="搜索规则名称、程序、端口..."
+          v-model:value="searchInput"
+          placeholder="搜索规则名称、端口、地址..."
           clearable
           size="small"
           style="width: 260px"
-          @update:value="store.setSearch"
+          @update:value="(v) => { if (!v) store.setSearch('') }"
         >
           <template #prefix>
             <NIcon :size="16" color="#999">

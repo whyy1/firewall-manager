@@ -15,7 +15,7 @@ func newHiddenCmd(name string, args ...string) *exec.Cmd {
 }
 
 // GetRules 获取防火墙规则列表
-func GetRules(direction RuleDirection) ([]FirewallRule, error) {
+func GetRules(direction RuleDirection, limit int) ([]FirewallRule, error) {
 	dirStr := "In"
 	if direction == Outbound {
 		dirStr = "Out"
@@ -27,7 +27,16 @@ func GetRules(direction RuleDirection) ([]FirewallRule, error) {
 		return nil, fmt.Errorf("执行 netsh 失败: %w\n%s", err, string(output))
 	}
 
-	return parseRules(string(output), direction)
+	rules, err := parseRules(string(output), direction)
+	if err != nil {
+		return nil, err
+	}
+
+	if limit > 0 && len(rules) > limit {
+		rules = rules[:limit]
+	}
+
+	return rules, nil
 }
 
 // AddRule 添加防火墙规则
@@ -142,14 +151,13 @@ func parseRules(output string, direction RuleDirection) ([]FirewallRule, error) 
 			continue
 		}
 
-		// 新规则开始（以 "Rule Name:" 开头）
 		if strings.HasPrefix(line, "Rule Name:") || strings.HasPrefix(line, "规则名称:") {
 			if current != nil {
 				rules = append(rules, *current)
 			}
 			current = &FirewallRule{
 				Direction: direction,
-				Enabled:   true, // 默认启用
+				Enabled:   true,
 				Protocol:  "any",
 				Profile:   "any",
 			}

@@ -28,13 +28,13 @@ func (a *App) IsAdmin() bool {
 	return admin.IsAdmin()
 }
 
-// GetRules 获取指定方向的防火墙规则
-func (a *App) GetRules(direction string) []firewall.FirewallRule {
+// GetRules 获取指定方向的防火墙规则（limit=0 获取全部）
+func (a *App) GetRules(direction string, limit int) []firewall.FirewallRule {
 	dir := firewall.Inbound
 	if direction == "out" {
 		dir = firewall.Outbound
 	}
-	rules, err := firewall.GetRules(dir)
+	rules, err := firewall.GetRules(dir, limit)
 	if err != nil {
 		fmt.Printf("获取规则失败: %v\n", err)
 		return []firewall.FirewallRule{}

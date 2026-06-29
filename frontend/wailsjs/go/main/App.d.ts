@@ -10,7 +10,7 @@ export function BlockApp(arg1:string):Promise<void>;
 
 export function DeleteRule(arg1:string):Promise<void>;
 
-export function GetRules(arg1:string):Promise<Array<firewall.FirewallRule>>;
+export function GetRules(arg1:string,arg2:number):Promise<Array<firewall.FirewallRule>>;
 
 export function IsAdmin():Promise<boolean>;
 

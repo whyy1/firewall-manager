@@ -9,6 +9,8 @@ export const store = reactive({
   actionFilter: 'all',
   statusFilter: 'all',
   error: null,
+  partial: true, // 是否只加载了部分规则
+  totalCount: 0,
 
   get filteredRules() {
     let result = this.rules
@@ -18,7 +20,6 @@ export const store = reactive({
       const q = this.searchQuery.toLowerCase()
       result = result.filter(r =>
         r.name.toLowerCase().includes(q) ||
-        r.program.toLowerCase().includes(q) ||
         r.localAddr.toLowerCase().includes(q) ||
         r.remoteAddr.toLowerCase().includes(q) ||
         r.localPort.toLowerCase().includes(q) ||
@@ -46,11 +47,12 @@ export const store = reactive({
     return this.rules.filter(r => r.enabled).length
   },
 
-  async fetchRules() {
+  async fetchRules(limit = 10) {
     this.loading = true
     this.error = null
     try {
-      this.rules = await GetRules(this.direction)
+      this.rules = await GetRules(this.direction, limit)
+      this.partial = limit > 0
     } catch (e) {
       this.error = String(e)
       this.rules = []
@@ -59,34 +61,38 @@ export const store = reactive({
     }
   },
 
+  async fetchAllRules() {
+    await this.fetchRules(0)
+  },
+
   async deleteRule(name) {
     await DeleteRule(name)
-    await this.fetchRules()
+    await this.fetchRules(this.partial ? 10 : 0)
   },
 
   async toggleRule(name, enabled) {
     await ToggleRule(name, enabled)
-    await this.fetchRules()
+    await this.fetchRules(this.partial ? 10 : 0)
   },
 
   async addRule(rule) {
     await AddRule(rule)
-    await this.fetchRules()
+    await this.fetchRules(this.partial ? 10 : 0)
   },
 
   async blockApp(programPath) {
     await BlockApp(programPath)
-    await this.fetchRules()
+    await this.fetchRules(this.partial ? 10 : 0)
   },
 
   async allowApp(programPath) {
     await AllowApp(programPath)
-    await this.fetchRules()
+    await this.fetchRules(this.partial ? 10 : 0)
   },
 
   setDirection(dir) {
     this.direction = dir
-    this.fetchRules()
+    this.fetchRules(10)
   },
 
   setSearch(query) {
