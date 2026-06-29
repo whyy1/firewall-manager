@@ -1,11 +1,10 @@
 <script setup>
+import {h, computed} from 'vue'
 import {store} from '../stores/rules.js'
-import {NIcon, useMessage, useDialog} from 'naive-ui'
+import {NIcon, NTag, NSwitch, NButton, NTooltip, useMessage, useDialog} from 'naive-ui'
 import {
   TrashOutline,
   CreateOutline,
-  ToggleOutline,
-  FolderOpenOutline,
   ShieldCheckmarkOutline,
   CloseCircleOutline,
 } from '@vicons/ionicons5'
@@ -40,26 +39,119 @@ function handleDelete(rule) {
   })
 }
 
-function truncatePath(path, maxLen) {
-  if (!path || path === 'Any') return '-'
-  if (path.length <= maxLen) return path
-  return '...' + path.slice(-(maxLen - 3))
-}
+const columns = computed(() => [
+  {
+    title: '状态',
+    key: 'enabled',
+    width: 60,
+    minWidth: 50,
+    maxWidth: 80,
+    align: 'center',
+    render(row) {
+      return h(NSwitch, {
+        value: row.enabled,
+        size: 'small',
+        onUpdateValue: () => handleToggle(row),
+      })
+    },
+  },
+  {
+    title: '规则名称',
+    key: 'name',
+    width: 200,
+    minWidth: 100,
+    ellipsis: {tooltip: true},
+    render(row) {
+      return h('span', {style: {color: '#ddd'}}, row.name)
+    },
+  },
+  {
+    title: '动作',
+    key: 'action',
+    width: 70,
+    minWidth: 60,
+    maxWidth: 90,
+    align: 'center',
+    render(row) {
+      return h(NTag, {
+        type: row.action === 'allow' ? 'success' : 'error',
+        size: 'tiny',
+        bordered: false,
+      }, {default: () => row.action === 'allow' ? '允许' : '阻止'})
+    },
+  },
+  {
+    title: '程序',
+    key: 'program',
+    width: 280,
+    minWidth: 100,
+    ellipsis: {tooltip: true},
+    render(row) {
+      const text = !row.program || row.program === 'Any' ? '-' : row.program
+      return h('span', {
+        style: {fontFamily: '"Cascadia Code","Consolas",monospace', fontSize: '12px', color: '#999'},
+      }, text)
+    },
+  },
+  {
+    title: '协议',
+    key: 'protocol',
+    width: 70,
+    minWidth: 50,
+    maxWidth: 100,
+    align: 'center',
+    render(row) {
+      return h('span', {style: {color: '#888', fontSize: '12px'}},
+        row.protocol === 'any' ? '任意' : row.protocol)
+    },
+  },
+  {
+    title: '本地端口',
+    key: 'localPort',
+    width: 90,
+    minWidth: 60,
+    maxWidth: 140,
+    ellipsis: {tooltip: true},
+    render(row) {
+      return h('span', {style: {color: '#888', fontSize: '12px'}}, row.localPort || '-')
+    },
+  },
+  {
+    title: '远程端口',
+    key: 'remotePort',
+    width: 90,
+    minWidth: 60,
+    maxWidth: 140,
+    ellipsis: {tooltip: true},
+    render(row) {
+      return h('span', {style: {color: '#888', fontSize: '12px'}}, row.remotePort || '-')
+    },
+  },
+  {
+    title: '管理',
+    key: 'actions',
+    width: 80,
+    minWidth: 70,
+    maxWidth: 100,
+    align: 'center',
+    render(row) {
+      return h('div', {style: {display: 'flex', gap: '6px', justifyContent: 'center'}}, [
+        h(NButton, {text: true, size: 'small', onClick: () => emit('edit', row)}, {
+          icon: () => h(NIcon, {size: 16, color: '#4361ee'}, {default: () => h(CreateOutline)}),
+        }),
+        h(NButton, {text: true, size: 'small', onClick: () => handleDelete(row)}, {
+          icon: () => h(NIcon, {size: 16, color: '#e88080'}, {default: () => h(TrashOutline)}),
+        }),
+      ])
+    },
+  },
+])
+
+const rowClassName = (row) => row.enabled ? '' : 'row-disabled'
 </script>
 
 <template>
   <div class="rule-list">
-    <!-- 表头 -->
-    <div class="list-header">
-      <div class="col col-status">状态</div>
-      <div class="col col-name">规则名称</div>
-      <div class="col col-action">操作</div>
-      <div class="col col-program">程序</div>
-      <div class="col col-protocol">协议</div>
-      <div class="col col-port">端口</div>
-      <div class="col col-actions">管理</div>
-    </div>
-
     <!-- 加载中 -->
     <div v-if="store.loading" class="loading-state">
       <n-spin size="medium"/>
@@ -83,61 +175,24 @@ function truncatePath(path, maxLen) {
       <span>{{ store.searchQuery ? '没有匹配的规则' : '暂无规则' }}</span>
     </div>
 
-    <!-- 规则列表 -->
-    <div v-else class="list-body">
-      <div
-        v-for="(rule, index) in store.filteredRules"
-        :key="rule.name + index"
-        class="rule-row"
-        :class="{disabled: !rule.enabled}"
-      >
-        <div class="col col-status">
-          <n-switch
-            :value="rule.enabled"
-            size="small"
-            @update:value="handleToggle(rule)"
-          />
-        </div>
-        <div class="col col-name" :title="rule.name">
-          <span class="rule-name">{{ rule.name }}</span>
-        </div>
-        <div class="col col-action">
-          <n-tag
-            :type="rule.action === 'allow' ? 'success' : 'error'"
-            size="tiny"
-            :bordered="false"
-          >
-            {{ rule.action === 'allow' ? '允许' : '阻止' }}
-          </n-tag>
-        </div>
-        <div class="col col-program" :title="rule.program">
-          <span class="path-text">{{ truncatePath(rule.program, 36) }}</span>
-        </div>
-        <div class="col col-protocol">
-          <span>{{ rule.protocol === 'any' ? '任意' : rule.protocol }}</span>
-        </div>
-        <div class="col col-port">
-          <span>{{ rule.localPort || '-' }}</span>
-        </div>
-        <div class="col col-actions">
-          <n-button text size="small" @click="$emit('edit', rule)" title="编辑">
-            <NIcon :size="16" color="#4361ee">
-              <CreateOutline/>
-            </NIcon>
-          </n-button>
-          <n-button text size="small" @click="handleDelete(rule)" title="删除">
-            <NIcon :size="16" color="#e88080">
-              <TrashOutline/>
-            </NIcon>
-          </n-button>
-        </div>
-      </div>
-    </div>
+    <!-- 数据表格 -->
+    <n-data-table
+      v-else
+      :columns="columns"
+      :data="store.filteredRules"
+      :row-class-name="rowClassName"
+      :max-height="600"
+      :scrollbar-props="{size: 6}"
+      :bordered="false"
+      size="small"
+      striped
+    />
 
     <!-- 底部统计 -->
     <div v-if="!store.loading && !store.error" class="list-footer">
       共 {{ store.filteredRules.length }} 条规则
-      <span v-if="store.searchQuery">（已过滤）</span>
+      <span v-if="store.searchQuery || store.actionFilter !== 'all' || store.statusFilter !== 'all'">（已过滤）</span>
+      <span style="margin-left: 12px; color: #555;">← 拖拽列边框调整宽度</span>
     </div>
   </div>
 </template>
@@ -149,105 +204,46 @@ function truncatePath(path, maxLen) {
   height: 100%;
 }
 
-.list-header {
-  display: flex;
-  align-items: center;
-  padding: 10px 16px;
-  background: #1a1a22;
-  border-radius: 8px 8px 0 0;
-  font-size: 12px;
-  font-weight: 600;
-  color: #888;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.list-body {
-  flex: 1;
-  overflow-y: auto;
-}
-
-.rule-row {
-  display: flex;
-  align-items: center;
-  padding: 10px 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
-  transition: background 0.12s;
-  font-size: 13px;
-}
-
-.rule-row:hover {
-  background: rgba(255, 255, 255, 0.03);
-}
-
-.rule-row.disabled {
+/* 禁用行半透明 */
+:deep(.row-disabled td) {
   opacity: 0.45;
 }
 
-.col {
-  display: flex;
-  align-items: center;
+/* 表格深色主题适配 */
+:deep(.n-data-table) {
+  --n-th-color: #1a1a22;
+  --n-td-color: transparent;
+  --n-border-color: rgba(255, 255, 255, 0.06);
+  --n-th-text-color: #888;
+  --n-td-text-color: #ccc;
 }
 
-.col-status {
-  width: 50px;
-  flex-shrink: 0;
-}
-
-.col-name {
-  flex: 2;
-  min-width: 0;
-  overflow: hidden;
-}
-
-.col-action {
-  width: 60px;
-  flex-shrink: 0;
-}
-
-.col-program {
-  flex: 2.5;
-  min-width: 0;
-  overflow: hidden;
-}
-
-.col-protocol {
-  width: 70px;
-  flex-shrink: 0;
-  color: #888;
+:deep(.n-data-table .n-data-table-th) {
   font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
 }
 
-.col-port {
-  width: 70px;
-  flex-shrink: 0;
-  color: #888;
-  font-size: 12px;
+:deep(.n-data-table .n-data-table-td) {
+  font-size: 13px;
 }
 
-.col-actions {
-  width: 70px;
-  flex-shrink: 0;
-  display: flex;
-  gap: 6px;
-  justify-content: flex-end;
+:deep(.n-data-table .n-data-table-tr:hover .n-data-table-td) {
+  background: rgba(255, 255, 255, 0.03) !important;
 }
 
-.rule-name {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  color: #ddd;
+:deep(.n-data-table .n-data-table-tr--striped .n-data-table-td) {
+  background: rgba(255, 255, 255, 0.015);
 }
 
-.path-text {
-  font-family: "Cascadia Code", "Consolas", monospace;
-  font-size: 12px;
-  color: #888;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+/* 列拖拽手柄 */
+:deep(.n-data-table .n-data-table-th__resize-handle) {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+:deep(.n-data-table .n-data-table-th__resize-handle:hover) {
+  background: #4361ee;
 }
 
 .loading-state,
@@ -270,5 +266,7 @@ function truncatePath(path, maxLen) {
   border-top: 1px solid rgba(255, 255, 255, 0.06);
   background: #1a1a22;
   border-radius: 0 0 8px 8px;
+  display: flex;
+  align-items: center;
 }
 </style>
