@@ -7,17 +7,19 @@ import {
   SwapHorizontalOutline,
   SearchOutline,
   AddOutline,
-  FolderOpenOutline,
   BanOutline,
   CheckmarkCircleOutline,
 } from '@vicons/ionicons5'
 import RuleList from './RuleList.vue'
 import RuleEditor from './RuleEditor.vue'
+import QuickActionDialog from './QuickActionDialog.vue'
 import {IsAdmin} from '../../wailsjs/go/main/App'
 
 const isAdmin = ref(false)
 const showEditor = ref(false)
 const editingRule = ref(null)
+const blockDialog = ref(null)
+const allowDialog = ref(null)
 
 onMounted(async () => {
   isAdmin.value = await IsAdmin()
@@ -54,7 +56,7 @@ function handleDirectionChange(dir) {
       <div class="header-right">
         <n-input
           v-model:value="store.searchQuery"
-          placeholder="搜索规则名称或程序..."
+          placeholder="搜索规则名称、程序、端口..."
           clearable
           size="small"
           style="width: 260px"
@@ -66,6 +68,20 @@ function handleDirectionChange(dir) {
             </NIcon>
           </template>
         </n-input>
+        <n-select
+          v-model:value="store.actionFilter"
+          :options="[{label:'全部动作',value:'all'},{label:'允许',value:'allow'},{label:'阻止',value:'block'}]"
+          size="small"
+          style="width: 100px"
+          @update:value="store.setActionFilter"
+        />
+        <n-select
+          v-model:value="store.statusFilter"
+          :options="[{label:'全部状态',value:'all'},{label:'已启用',value:'enabled'},{label:'已禁用',value:'disabled'}]"
+          size="small"
+          style="width: 100px"
+          @update:value="store.setStatusFilter"
+        />
         <n-button type="primary" size="small" @click="handleAdd">
           <template #icon>
             <NIcon>
@@ -105,13 +121,13 @@ function handleDirectionChange(dir) {
 
         <div class="nav-group">
           <div class="nav-group-title">快捷操作</div>
-          <div class="nav-item" @click="$refs.blockDialog?.show()">
+          <div class="nav-item" @click="blockDialog?.open()">
             <NIcon :size="18">
               <BanOutline/>
             </NIcon>
             <span>阻止程序联网</span>
           </div>
-          <div class="nav-item" @click="$refs.allowDialog?.show()">
+          <div class="nav-item" @click="allowDialog?.open()">
             <NIcon :size="18">
               <CheckmarkCircleOutline/>
             </NIcon>
@@ -148,60 +164,6 @@ function handleDirectionChange(dir) {
     <QuickActionDialog ref="allowDialog" title="放行程序联网" action="allow"/>
   </div>
 </template>
-
-<script>
-import {defineComponent, ref} from 'vue'
-import {store} from '../stores/rules.js'
-import {useMessage} from 'naive-ui'
-import {FolderOpenOutline} from '@vicons/ionicons5'
-
-const QuickActionDialog = defineComponent({
-  props: {
-    title: String,
-    action: String,
-  },
-  setup(props) {
-    const show = ref(false)
-    const path = ref('')
-    const message = useMessage()
-
-    return {show, path, message}
-  },
-  methods: {
-    show() {
-      this.show = true
-      this.path = ''
-    },
-    async handleConfirm() {
-      if (!this.path) return
-      try {
-        if (this.action === 'block') {
-          await store.blockApp(this.path)
-          this.message.success('已成功阻止该程序联网')
-        } else {
-          await store.allowApp(this.path)
-          this.message.success('已成功放行该程序联网')
-        }
-        this.show = false
-      } catch (e) {
-        this.message.error('操作失败: ' + String(e))
-      }
-    }
-  },
-  template: `
-    <n-modal v-model:show="show" preset="dialog" :title="title"
-             positive-text="确认" negative-text="取消"
-             @positive-click="handleConfirm">
-      <n-input v-model:value="path" placeholder="输入程序完整路径，如 C:\Program Files\app.exe"
-               clearable style="margin-top: 12px"/>
-    </n-modal>
-  `
-})
-
-export default {
-  components: {QuickActionDialog}
-}
-</script>
 
 <style scoped>
 .layout {

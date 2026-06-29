@@ -4,7 +4,15 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
+	"syscall"
 )
+
+// newHiddenCmd 创建隐藏控制台窗口的命令
+func newHiddenCmd(name string, args ...string) *exec.Cmd {
+	cmd := exec.Command(name, args...)
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+	return cmd
+}
 
 // GetRules 获取防火墙规则列表
 func GetRules(direction RuleDirection) ([]FirewallRule, error) {
@@ -13,7 +21,7 @@ func GetRules(direction RuleDirection) ([]FirewallRule, error) {
 		dirStr = "Out"
 	}
 
-	cmd := exec.Command("netsh", "advfirewall", "firewall", "show", "rule", "name=all", "dir="+dirStr)
+	cmd := newHiddenCmd("netsh", "advfirewall", "firewall", "show", "rule", "name=all", "dir="+dirStr)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return nil, fmt.Errorf("执行 netsh 失败: %w\n%s", err, string(output))
@@ -25,7 +33,7 @@ func GetRules(direction RuleDirection) ([]FirewallRule, error) {
 // AddRule 添加防火墙规则
 func AddRule(rule FirewallRule) error {
 	args := buildAddArgs(rule)
-	cmd := exec.Command("netsh", args...)
+	cmd := newHiddenCmd("netsh", args...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("添加规则失败: %w\n%s", err, string(output))
@@ -35,7 +43,7 @@ func AddRule(rule FirewallRule) error {
 
 // DeleteRule 删除防火墙规则
 func DeleteRule(name string) error {
-	cmd := exec.Command("netsh", "advfirewall", "firewall", "delete", "rule", "name="+name)
+	cmd := newHiddenCmd("netsh", "advfirewall", "firewall", "delete", "rule", "name="+name)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("删除规则失败: %w\n%s", err, string(output))
@@ -49,7 +57,7 @@ func ToggleRule(name string, enabled bool) error {
 	if !enabled {
 		state = "no"
 	}
-	cmd := exec.Command("netsh", "advfirewall", "firewall", "set", "rule",
+	cmd := newHiddenCmd("netsh", "advfirewall", "firewall", "set", "rule",
 		"name="+name, "new", "enable="+state)
 	output, err := cmd.CombinedOutput()
 	if err != nil {

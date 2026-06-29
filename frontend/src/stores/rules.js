@@ -6,15 +6,38 @@ export const store = reactive({
   loading: false,
   direction: 'in',
   searchQuery: '',
+  actionFilter: 'all',
+  statusFilter: 'all',
   error: null,
 
   get filteredRules() {
-    if (!this.searchQuery) return this.rules
-    const q = this.searchQuery.toLowerCase()
-    return this.rules.filter(r =>
-      r.name.toLowerCase().includes(q) ||
-      r.program.toLowerCase().includes(q)
-    )
+    let result = this.rules
+
+    // 搜索过滤（名称、程序、端口）
+    if (this.searchQuery) {
+      const q = this.searchQuery.toLowerCase()
+      result = result.filter(r =>
+        r.name.toLowerCase().includes(q) ||
+        r.program.toLowerCase().includes(q) ||
+        r.localPort.toLowerCase().includes(q) ||
+        r.remotePort.toLowerCase().includes(q) ||
+        r.protocol.toLowerCase().includes(q)
+      )
+    }
+
+    // 动作过滤
+    if (this.actionFilter !== 'all') {
+      result = result.filter(r => r.action === this.actionFilter)
+    }
+
+    // 状态过滤
+    if (this.statusFilter === 'enabled') {
+      result = result.filter(r => r.enabled)
+    } else if (this.statusFilter === 'disabled') {
+      result = result.filter(r => !r.enabled)
+    }
+
+    return result
   },
 
   get enabledCount() {
@@ -66,5 +89,13 @@ export const store = reactive({
 
   setSearch(query) {
     this.searchQuery = query
+  },
+
+  setActionFilter(val) {
+    this.actionFilter = val
+  },
+
+  setStatusFilter(val) {
+    this.statusFilter = val
   }
 })
