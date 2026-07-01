@@ -5,6 +5,8 @@ import (
 	"os/exec"
 	"strings"
 	"syscall"
+	"unicode/utf8"
+	"unsafe"
 )
 
 // newHiddenCmd 创建隐藏控制台窗口的命令
@@ -12,6 +14,62 @@ func newHiddenCmd(name string, args ...string) *exec.Cmd {
 	cmd := exec.Command(name, args...)
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 	return cmd
+}
+
+// gbkToUTF8 使用 Windows API 将 GBK 字节转为 UTF-8
+func gbkToUTF8(data []byte) string {
+	if utf8.Valid(data) {
+		return string(data)
+	}
+
+	kernel32 := syscall.NewLazyDLL("kernel32.dll")
+	MultiByteToWideChar := kernel32.NewProc("MultiByteToWideChar")
+	WideCharToMultiByte := kernel32.NewProc("WideCharToMultiByte")
+
+	// GBK (CP936) → UTF-16
+	cp := uint32(936) // GBK
+	srcLen := len(data)
+	if srcLen == 0 {
+		return ""
+	}
+
+	// 第一次调用：获取需要的 wchar 数量
+	wcharLen, _, _ := MultiByteToWideChar.Call(
+		uintptr(cp), 0,
+		uintptr(unsafe.Pointer(&data[0])), uintptr(srcLen),
+		0, 0,
+	)
+	if wcharLen == 0 {
+		return string(data)
+	}
+
+	// 分配 UTF-16 缓冲区
+	wcharBuf := make([]uint16, wcharLen)
+	MultiByteToWideChar.Call(
+		uintptr(cp), 0,
+		uintptr(unsafe.Pointer(&data[0])), uintptr(srcLen),
+		uintptr(unsafe.Pointer(&wcharBuf[0])), uintptr(wcharLen),
+	)
+
+	// UTF-16 → UTF-8
+	utf8Len, _, _ := WideCharToMultiByte.Call(
+		65001, 0, // CP_UTF8
+		uintptr(unsafe.Pointer(&wcharBuf[0])), uintptr(wcharLen),
+		0, 0, 0, 0,
+	)
+	if utf8Len == 0 {
+		return string(data)
+	}
+
+	utf8Buf := make([]byte, utf8Len)
+	WideCharToMultiByte.Call(
+		65001, 0,
+		uintptr(unsafe.Pointer(&wcharBuf[0])), uintptr(wcharLen),
+		uintptr(unsafe.Pointer(&utf8Buf[0])), uintptr(utf8Len),
+		0, 0,
+	)
+
+	return string(utf8Buf)
 }
 
 // GetRules 获取防火墙规则列表
@@ -27,7 +85,10 @@ func GetRules(direction RuleDirection, limit int) ([]FirewallRule, error) {
 		return nil, fmt.Errorf("执行 netsh 失败: %w\n%s", err, string(output))
 	}
 
-	rules, err := parseRules(string(output), direction)
+	// GBK → UTF-8
+	utf8Output := gbkToUTF8(output)
+
+	rules, err := parseRules(utf8Output, direction)
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +150,6 @@ func BlockApp(programPath string) error {
 	if err := AddRule(inRule); err != nil {
 		return err
 	}
-
 	outRule := inRule
 	outRule.Direction = Outbound
 	return AddRule(outRule)
@@ -109,7 +169,6 @@ func buildAddArgs(rule FirewallRule) []string {
 		"dir=" + string(rule.Direction),
 		"action=" + string(rule.Action),
 	}
-
 	if rule.Program != "" {
 		args = append(args, "program="+rule.Program)
 	}
@@ -129,17 +188,15 @@ func buildAddArgs(rule FirewallRule) []string {
 	} else {
 		args = append(args, "profile=any")
 	}
-
 	enable := "yes"
 	if !rule.Enabled {
 		enable = "no"
 	}
 	args = append(args, "enable="+enable)
-
 	return args
 }
 
-// parseRules 解析 netsh 输出
+// parseRules 解析 netsh 输出（已转为 UTF-8）
 func parseRules(output string, direction RuleDirection) ([]FirewallRule, error) {
 	var rules []FirewallRule
 	var current *FirewallRule
@@ -151,7 +208,7 @@ func parseRules(output string, direction RuleDirection) ([]FirewallRule, error) 
 			continue
 		}
 
-		if strings.HasPrefix(line, "Rule Name:") || strings.HasPrefix(line, "规则名称:") {
+		if isNewRule(line) {
 			if current != nil {
 				rules = append(rules, *current)
 			}
@@ -169,14 +226,14 @@ func parseRules(output string, direction RuleDirection) ([]FirewallRule, error) 
 			continue
 		}
 
-		lower := strings.ToLower(line)
+		key := normalizeKey(line)
 
 		switch {
-		case strings.HasPrefix(lower, "enabled:") || strings.HasPrefix(lower, "已启用:"):
+		case hasPrefixAny(key, "enabled:", "已启用:"):
 			val := strings.TrimSpace(extractValue(line))
 			current.Enabled = strings.ToLower(val) == "yes" || val == "是"
 
-		case strings.HasPrefix(lower, "action:") || strings.HasPrefix(lower, "操作:"):
+		case hasPrefixAny(key, "action:", "操作:"):
 			val := strings.ToLower(strings.TrimSpace(extractValue(line)))
 			if val == "block" || val == "阻止" {
 				current.Action = Block
@@ -184,25 +241,25 @@ func parseRules(output string, direction RuleDirection) ([]FirewallRule, error) 
 				current.Action = Allow
 			}
 
-		case strings.HasPrefix(lower, "program:") || strings.HasPrefix(lower, "程序:"):
+		case hasPrefixAny(key, "program:", "程序:"):
 			current.Program = extractValue(line)
 
-		case strings.HasPrefix(lower, "local ip:") || strings.HasPrefix(lower, "本地 ip:"):
+		case hasPrefixAny(key, "localip:", "本地ip:"):
 			current.LocalAddr = strings.TrimSpace(extractValue(line))
 
-		case strings.HasPrefix(lower, "remote ip:") || strings.HasPrefix(lower, "远程 ip:"):
+		case hasPrefixAny(key, "remoteip:", "远程ip:"):
 			current.RemoteAddr = strings.TrimSpace(extractValue(line))
 
-		case strings.HasPrefix(lower, "protocol:") || strings.HasPrefix(lower, "协议:"):
+		case hasPrefixAny(key, "protocol:", "协议:"):
 			current.Protocol = strings.TrimSpace(extractValue(line))
 
-		case strings.HasPrefix(lower, "localport:") || strings.HasPrefix(lower, "本地端口:"):
+		case hasPrefixAny(key, "localport:", "本地端口:"):
 			current.LocalPort = strings.TrimSpace(extractValue(line))
 
-		case strings.HasPrefix(lower, "remoteport:") || strings.HasPrefix(lower, "远程端口:"):
+		case hasPrefixAny(key, "remoteport:", "远程端口:"):
 			current.RemotePort = strings.TrimSpace(extractValue(line))
 
-		case strings.HasPrefix(lower, "profiles:") || strings.HasPrefix(lower, "配置文件:"):
+		case hasPrefixAny(key, "profiles:", "配置文件:"):
 			current.Profile = strings.TrimSpace(extractValue(line))
 		}
 	}
@@ -214,16 +271,47 @@ func parseRules(output string, direction RuleDirection) ([]FirewallRule, error) 
 	return rules, nil
 }
 
-// extractValue 提取冒号后面的值
-func extractValue(line string) string {
-	idx := strings.Index(line, ":")
-	if idx < 0 {
-		return ""
-	}
-	return strings.TrimSpace(line[idx+1:])
+func isNewRule(line string) bool {
+	return strings.HasPrefix(line, "Rule Name:") ||
+		strings.HasPrefix(line, "规则名称:")
 }
 
-// extractFileName 从路径中提取文件名
+func normalizeKey(line string) string {
+	// 去掉全角空格 　 和 ASCII 空格
+	cleaned := strings.ReplaceAll(line, "　", "")
+	cleaned = strings.TrimSpace(cleaned)
+	lower := strings.ToLower(cleaned)
+	idx := strings.Index(lower, ":")
+	if idx < 0 {
+		return lower
+	}
+	// 去掉冒号前所有空格
+	return strings.ReplaceAll(lower[:idx], " ", "") + lower[idx:]
+}
+
+func hasPrefixAny(s string, prefixes ...string) bool {
+	for _, p := range prefixes {
+		if strings.HasPrefix(s, p) {
+			return true
+		}
+	}
+	return false
+}
+
+func extractValue(line string) string {
+	// 先尝试 ASCII 冒号
+	idx := strings.Index(line, ":")
+	if idx >= 0 {
+		return strings.TrimSpace(line[idx+1:])
+	}
+	// 再尝试全角冒号
+	idx = strings.Index(line, "：")
+	if idx >= 0 {
+		return strings.TrimSpace(line[idx+3:]) // "：" 占 3 字节
+	}
+	return ""
+}
+
 func extractFileName(path string) string {
 	parts := strings.ReplaceAll(path, "\\", "/")
 	segs := strings.Split(parts, "/")

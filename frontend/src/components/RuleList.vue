@@ -237,7 +237,7 @@ const rowClassName = (row) => row.enabled ? '' : 'row-disabled'
         <CloseCircleOutline/>
       </NIcon>
       <span>{{ store.error }}</span>
-      <n-button size="small" @click="store.fetchRules">重试</n-button>
+      <n-button size="small" @click="() => store.fetchRules()">重试</n-button>
     </div>
 
     <!-- 空状态 -->
@@ -255,7 +255,7 @@ const rowClassName = (row) => row.enabled ? '' : 'row-disabled'
         :data="store.filteredRules"
         :row-class-name="rowClassName"
         :scroll-x="scrollX"
-        :flex-height="true"
+        :max-height="500"
         :scrollbar-props="{size: 6}"
         :bordered="false"
         size="small"
