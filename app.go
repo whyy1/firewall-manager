@@ -66,3 +66,23 @@ func (a *App) BlockApp(programPath string) error {
 func (a *App) AllowApp(programPath string) error {
 	return firewall.AllowApp(programPath)
 }
+
+// GetFirewallStatus 获取防火墙是否开启
+func (a *App) GetFirewallStatus() bool {
+	on, err := firewall.GetFirewallStatus()
+	if err != nil {
+		fmt.Printf("获取防火墙状态失败: %v\n", err)
+		return false
+	}
+	return on
+}
+
+// SetFirewallEnabled 开启或关闭防火墙
+func (a *App) SetFirewallEnabled(enabled bool) error {
+	return firewall.SetFirewallEnabled(enabled)
+}
+
+// ResetFirewall 重置防火墙为默认规则
+func (a *App) ResetFirewall() error {
+	return firewall.ResetFirewall()
+}

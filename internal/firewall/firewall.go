@@ -136,6 +136,43 @@ func ToggleRule(name string, enabled bool) error {
 	return nil
 }
 
+// GetFirewallStatus 获取防火墙是否开启
+func GetFirewallStatus() (bool, error) {
+	cmd := newHiddenCmd("netsh", "advfirewall", "show", "allprofiles", "state")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return false, fmt.Errorf("查询防火墙状态失败: %w\n%s", err, string(output))
+	}
+	utf8 := gbkToUTF8(output)
+	// 包含 "ON" 或 "开启" 表示已启用
+	lower := strings.ToLower(utf8)
+	return strings.Contains(lower, "on") || strings.Contains(utf8, "开启"), nil
+}
+
+// SetFirewallEnabled 开启或关闭防火墙
+func SetFirewallEnabled(enabled bool) error {
+	state := "off"
+	if enabled {
+		state = "on"
+	}
+	cmd := newHiddenCmd("netsh", "advfirewall", "set", "allprofiles", "state", state)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("设置防火墙状态失败: %w\n%s", err, string(output))
+	}
+	return nil
+}
+
+// ResetFirewall 重置防火墙为默认规则
+func ResetFirewall() error {
+	cmd := newHiddenCmd("netsh", "advfirewall", "reset")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("重置防火墙失败: %w\n%s", err, string(output))
+	}
+	return nil
+}
+
 // BlockApp 快捷阻止程序联网
 func BlockApp(programPath string) error {
 	inRule := FirewallRule{

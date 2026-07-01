@@ -1,0 +1,84 @@
+- generic [ref=e4]:
+  - banner [ref=e5]:
+    - generic [ref=e6]:
+      - img [ref=e7]:
+        - img [ref=e8]
+      - generic [ref=e11]: 防火墙管理器
+      - generic [ref=e13]: 需要管理员权限
+    - generic [ref=e14]:
+      - generic [ref=e16]:
+        - img [ref=e18]:
+          - img [ref=e19]
+        - generic [ref=e22]:
+          - textbox "规则名称" [ref=e23]
+          - generic:
+            - generic: 规则名称
+      - generic [ref=e28]:
+        - textbox "端口" [ref=e29]
+        - generic:
+          - generic: 端口
+      - generic [ref=e34]:
+        - textbox "地址" [ref=e35]
+        - generic:
+          - generic: 地址
+      - generic [ref=e40] [cursor=pointer]:
+        - generic "全部协议" [ref=e41]:
+          - generic [ref=e42]: 全部协议
+        - img "loading" [ref=e43]:
+          - img [ref=e48]
+      - generic [ref=e52] [cursor=pointer]:
+        - generic "全部动作" [ref=e53]:
+          - generic [ref=e54]: 全部动作
+        - img "loading" [ref=e55]:
+          - img [ref=e60]
+      - generic [ref=e64] [cursor=pointer]:
+        - generic "全部状态" [ref=e65]:
+          - generic [ref=e66]: 全部状态
+        - img "loading" [ref=e67]:
+          - img [ref=e72]
+      - button "切换暗色" [ref=e74] [cursor=pointer]:
+        - img [ref=e76]:
+          - img [ref=e77]
+      - button "添加规则" [ref=e83] [cursor=pointer]:
+        - img [ref=e85]:
+          - img [ref=e86]
+        - generic [ref=e87]: 添加规则
+  - generic [ref=e88]:
+    - complementary [ref=e89]:
+      - generic [ref=e90]:
+        - generic [ref=e91] [cursor=pointer]:
+          - img [ref=e92]:
+            - img [ref=e93]
+          - generic [ref=e96]: 入站规则
+        - generic [ref=e97] [cursor=pointer]:
+          - img [ref=e98]:
+            - img [ref=e99]
+          - generic [ref=e102]: 出站规则
+      - generic [ref=e103]:
+        - generic [ref=e104]: 快捷操作
+        - generic [ref=e105] [cursor=pointer]:
+          - img [ref=e106]:
+            - img [ref=e107]
+          - generic [ref=e109]: 防火墙 已关闭
+        - generic [ref=e110] [cursor=pointer]:
+          - img [ref=e111]:
+            - img [ref=e112]
+          - generic [ref=e115]: 重置防火墙
+      - generic [ref=e116]:
+        - generic [ref=e117]:
+          - generic [ref=e118]: 总规则数
+          - generic [ref=e119]: "0"
+        - generic [ref=e120]:
+          - generic [ref=e121]: 已启用
+          - generic [ref=e122]: "0"
+    - main [ref=e123]:
+      - generic [ref=e124]:
+        - generic [ref=e125]:
+          - img [ref=e126]:
+            - img [ref=e127]
+          - generic [ref=e130]: 暂无规则
+        - generic [ref=e131]:
+          - generic [ref=e132]: 共 0 条规则
+          - generic [ref=e133]: （仅前 10 条）
+          - button "加载全部" [ref=e134] [cursor=pointer]:
+            - generic [ref=e135]: 加载全部

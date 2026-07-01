@@ -18,12 +18,24 @@ export function DeleteRule(arg1) {
   return window['go']['main']['App']['DeleteRule'](arg1);
 }
 
+export function GetFirewallStatus() {
+  return window['go']['main']['App']['GetFirewallStatus']();
+}
+
 export function GetRules(arg1, arg2) {
   return window['go']['main']['App']['GetRules'](arg1, arg2);
 }
 
 export function IsAdmin() {
   return window['go']['main']['App']['IsAdmin']();
+}
+
+export function ResetFirewall() {
+  return window['go']['main']['App']['ResetFirewall']();
+}
+
+export function SetFirewallEnabled(arg1) {
+  return window['go']['main']['App']['SetFirewallEnabled'](arg1);
 }
 
 export function ToggleRule(arg1, arg2) {
