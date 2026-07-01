@@ -143,10 +143,12 @@ func GetFirewallStatus() (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("查询防火墙状态失败: %w\n%s", err, string(output))
 	}
-	utf8 := gbkToUTF8(output)
-	// 包含 "ON" 或 "开启" 表示已启用
-	lower := strings.ToLower(utf8)
-	return strings.Contains(lower, "on") || strings.Contains(utf8, "开启"), nil
+	// 同时检查原始字节和 UTF-8 转换结果
+	// "ON" 是纯 ASCII，无论 GBK 还是 UTF-8 都能匹配
+	raw := strings.ToLower(string(output))
+	converted := gbkToUTF8(output)
+	isOn := strings.Contains(raw, "on") || strings.Contains(converted, "开启")
+	return isOn, nil
 }
 
 // SetFirewallEnabled 开启或关闭防火墙

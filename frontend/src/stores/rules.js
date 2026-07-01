@@ -1,5 +1,5 @@
 import {reactive} from 'vue'
-import {GetRules, DeleteRule, ToggleRule, AddRule, GetFirewallStatus, SetFirewallEnabled, ResetFirewall} from '../../wailsjs/go/main/App'
+import {GetRules, DeleteRule, ToggleRule, AddRule} from '../../wailsjs/go/main/App'
 
 export const store = reactive({
   rules: [],
@@ -13,7 +13,6 @@ export const store = reactive({
   statusFilter: 'all',
   error: null,
   partial: true,
-  firewallOn: false,
 
   get filteredRules() {
     let r = this.rules
@@ -32,8 +31,6 @@ export const store = reactive({
       this.protocolFilter !== 'all' || this.actionFilter !== 'all' || this.statusFilter !== 'all'
   },
 
-  get enabledCount() { return this.rules.filter(r => r.enabled).length },
-
   async fetchRules(limit = 10) {
     this.loading = true; this.error = null
     try { this.rules = await GetRules(this.direction, limit); this.partial = limit > 0 }
@@ -46,10 +43,6 @@ export const store = reactive({
   async deleteRule(name) { await DeleteRule(name); await this.fetchRules(this.partial ? 10 : 0) },
   async toggleRule(name, enabled) { await ToggleRule(name, enabled); await this.fetchRules(this.partial ? 10 : 0) },
   async addRule(rule) { await AddRule(rule); await this.fetchRules(this.partial ? 10 : 0) },
-
-  async fetchFirewallStatus() { this.firewallOn = await GetFirewallStatus() },
-  async toggleFirewall() { await SetFirewallEnabled(!this.firewallOn); this.firewallOn = !this.firewallOn },
-  async resetFirewall() { await ResetFirewall(); await this.fetchRules(10) },
 
   setDirection(dir) { this.direction = dir; this.fetchRules(10) },
   setNameQuery(q) { this.nameQuery = q },

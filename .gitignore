@@ -27,6 +27,9 @@ npm-debug.log*
 # === Wails ===
 frontend/package-lock.json
 
+# === Playwright MCP ===
+.playwright-mcp/
+
 # === 敏感信息 ===
 *.env
 .env.*

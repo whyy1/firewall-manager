@@ -10,7 +10,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/platform-Windows-blue" alt="platform"/>
-  <img src="https://img.shields.io/badge/go-1.24+-00ADD8?logo=go" alt="go"/>
+  <img src="https://img.shields.io/badge/go-1.25-00ADD8?logo=go" alt="go"/>
   <img src="https://img.shields.io/badge/vue-3-42b883?logo=vue.js" alt="vue"/>
   <img src="https://img.shields.io/badge/wails-v2-111111" alt="wails"/>
   <img src="https://img.shields.io/github/license/whyy1/firewall-manager" alt="license"/>
@@ -32,10 +32,10 @@
 
 - 🔍 **规则浏览** — 查看所有入站/出站防火墙规则
 - ✏️ **规则管理** — 添加、编辑、删除、启用/禁用规则
-- 🔎 **智能搜索** — 按名称、程序、端口、协议搜索过滤
-- 🎯 **筛选器** — 按动作（允许/阻止）、状态（启用/禁用）快速筛选
-- 🚫 **快捷阻止** — 一键阻止指定程序联网
-- ✅ **快捷放行** — 一键放行指定程序联网
+- 🔎 **智能搜索** — 按名称、端口、地址分栏搜索，支持协议、动作、状态下拉筛选
+- 📏 **列宽拖拽** — 拖拽表头边框自定义列宽
+- 🌗 **明暗主题** — 一键切换深色/浅色主题
+- 🇨🇳 **中文适配** — 完整支持中文 Windows 的 GBK 编码输出
 
 ### 截图
 
@@ -50,7 +50,7 @@
 ### 从源码构建
 
 **环境要求：**
-- Go 1.24+
+- Go 1.25+
 - Node.js 18+
 - Wails CLI v2
 
@@ -114,10 +114,10 @@ No more digging through Control Panel — manage all your firewall rules from a 
 
 - 🔍 **Browse Rules** — View all inbound/outbound firewall rules
 - ✏️ **Manage Rules** — Add, edit, delete, enable/disable rules
-- 🔎 **Smart Search** — Filter by name, program path, port, or protocol
-- 🎯 **Filters** — Quick filter by action (allow/block) and status (enabled/disabled)
-- 🚫 **Quick Block** — One-click block internet access for any program
-- ✅ **Quick Allow** — One-click allow internet access for any program
+- 🔎 **Smart Search** — Filter by name, port, address with protocol/action/status dropdowns
+- 📏 **Resizable Columns** — Drag table header edges to resize columns
+- 🌗 **Dark/Light Theme** — Toggle between dark and light themes
+- 🇨🇳 **Chinese Windows Support** — Full GBK encoding support for netsh output
 
 ### Download
 
@@ -126,7 +126,7 @@ Go to the [Releases](https://github.com/whyy1/firewall-manager/releases) page to
 ### Build from Source
 
 **Requirements:**
-- Go 1.24+
+- Go 1.25+
 - Node.js 18+
 - Wails CLI v2
 

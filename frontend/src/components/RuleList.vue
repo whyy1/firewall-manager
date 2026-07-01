@@ -9,17 +9,19 @@ import {
   CloseCircleOutline,
 } from '@vicons/ionicons5'
 
+const props = defineProps({ isDark: { type: Boolean, default: true } })
 const emit = defineEmits(['edit'])
 const message = useMessage()
 const dialog = useDialog()
 
-// ============ 列宽拖拽（事件委托 + CSS ::after） ============
+// ============ 列宽拖拽（DOM 直接操作 + rAF 节流，避免拖拽期间 Vue 重渲染） ============
 const colWidths = ref({
   enabled: 60, name: 220, action: 70, protocol: 80,
   localAddr: 140, remoteAddr: 140, localPort: 90, remotePort: 90, actions: 80,
 })
 const colKeys = ['enabled','name','action','protocol','localAddr','remoteAddr','localPort','remotePort','actions']
 let dragState = null
+let rafId = 0
 
 function getColEdgeIndex(x) {
   const table = document.querySelector('.n-data-table')
@@ -37,7 +39,7 @@ function onGlobalMouseDown(e) {
   if (idx < 0) return
   e.preventDefault()
   e.stopPropagation()
-  dragState = { idx, startX: e.clientX, startW: colWidths.value[colKeys[idx]] }
+  dragState = { idx, startX: e.clientX, startW: colWidths.value[colKeys[idx]], pendingW: 0 }
   document.addEventListener('mousemove', onGlobalMouseMove)
   document.addEventListener('mouseup', onGlobalMouseUp)
   document.body.style.cursor = 'col-resize'
@@ -46,11 +48,44 @@ function onGlobalMouseDown(e) {
 
 function onGlobalMouseMove(e) {
   if (!dragState) return
-  colWidths.value[colKeys[dragState.idx]] = Math.max(50, dragState.startW + e.clientX - dragState.startX)
+  const newW = Math.max(50, dragState.startW + e.clientX - dragState.startX)
+  dragState.pendingW = newW
+  // 用 rAF 节流：拖拽期间只改 DOM 宽度，不触发 Vue 响应式
+  if (!rafId) {
+    rafId = requestAnimationFrame(() => {
+      rafId = 0
+      if (!dragState) return
+      // 直接操作 n-data-table 内部 DOM 的 th/td 宽度
+      const table = document.querySelector('.n-data-table')
+      if (table) {
+        const ths = table.querySelectorAll('.n-data-table-th')
+        if (ths[dragState.idx]) {
+          ths[dragState.idx].style.width = dragState.pendingW + 'px'
+          ths[dragState.idx].style.minWidth = dragState.pendingW + 'px'
+          ths[dragState.idx].style.maxWidth = dragState.pendingW + 'px'
+          // 同步对应列的 td
+          const rows = table.querySelectorAll('.n-data-table-tr')
+          rows.forEach(tr => {
+            const tds = tr.querySelectorAll('td')
+            if (tds[dragState.idx]) {
+              tds[dragState.idx].style.width = dragState.pendingW + 'px'
+              tds[dragState.idx].style.minWidth = dragState.pendingW + 'px'
+              tds[dragState.idx].style.maxWidth = dragState.pendingW + 'px'
+            }
+          })
+        }
+      }
+    })
+  }
 }
 
 function onGlobalMouseUp() {
+  if (dragState) {
+    // mouseup 时才同步回 Vue 状态（触发一次重渲染）
+    colWidths.value[colKeys[dragState.idx]] = dragState.pendingW || colWidths.value[colKeys[dragState.idx]]
+  }
   dragState = null
+  if (rafId) { cancelAnimationFrame(rafId); rafId = 0 }
   document.removeEventListener('mousemove', onGlobalMouseMove)
   document.removeEventListener('mouseup', onGlobalMouseUp)
   document.body.style.cursor = ''
@@ -134,7 +169,7 @@ function handleDelete(rule) {
     </div>
     <n-data-table v-else :columns="columns" :data="store.filteredRules" :row-class-name="rowClassName"
       :scroll-x="scrollX" :max-height="500" :scrollbar-props="{size: 6}" :bordered="false" size="small" striped />
-    <div v-if="!store.loading && !store.error" class="list-footer">
+    <div v-if="!store.loading && !store.error" class="list-footer" :class="{ 'footer-light': !isDark }">
       <span>共 {{ store.filteredRules.length }} 条规则</span>
       <span v-if="store.partial" style="color:#999">（仅前 10 条）</span>
       <span v-if="store.hasAnyFilter" style="color:#999">（已过滤）</span>
@@ -161,5 +196,8 @@ function handleDelete(rule) {
   padding: 10px 16px; font-size: 12px; color: #555;
   border-top: 1px solid rgba(255,255,255,0.06); background: #1a1a22;
   border-radius: 0 0 8px 8px; display: flex; align-items: center; gap: 8px;
+}
+.list-footer.footer-light {
+  background: #fff; color: #666; border-top-color: rgba(0,0,0,0.06);
 }
 </style>

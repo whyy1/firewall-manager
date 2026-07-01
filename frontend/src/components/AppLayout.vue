@@ -1,10 +1,10 @@
 <script setup>
 import {onMounted, ref, watch} from 'vue'
 import {store} from '../stores/rules.js'
-import {NIcon, useMessage, useDialog} from 'naive-ui'
+import {NIcon, useMessage} from 'naive-ui'
 import {
   ShieldCheckmarkOutline, SwapHorizontalOutline, SearchOutline, AddOutline,
-  PowerOutline, RefreshOutline, SunnyOutline, MoonOutline,
+  SunnyOutline, MoonOutline,
 } from '@vicons/ionicons5'
 import RuleList from './RuleList.vue'
 import RuleEditor from './RuleEditor.vue'
@@ -17,7 +17,6 @@ const isAdmin = ref(false)
 const showEditor = ref(false)
 const editingRule = ref(null)
 const message = useMessage()
-const dialog = useDialog()
 
 // 搜索防抖
 const nameInput = ref('')
@@ -41,36 +40,11 @@ const protocolOpts = [
 onMounted(async () => {
   isAdmin.value = await IsAdmin()
   store.fetchRules()
-  store.fetchFirewallStatus()
 })
 
 function handleAdd() { editingRule.value = null; showEditor.value = true }
 function handleEdit(rule) { editingRule.value = rule; showEditor.value = true }
 function handleDirectionChange(dir) { store.setDirection(dir) }
-
-function handleToggleFirewall() {
-  dialog.warning({
-    title: store.firewallOn ? '关闭防火墙' : '开启防火墙',
-    content: store.firewallOn ? '确定要关闭防火墙吗？这会降低系统安全性。' : '确定要开启防火墙吗？',
-    positiveText: '确定', negativeText: '取消',
-    onPositiveClick: async () => {
-      try { await store.toggleFirewall(); message.success(store.firewallOn ? '防火墙已开启' : '防火墙已关闭') }
-      catch (e) { message.error('操作失败: ' + String(e)) }
-    }
-  })
-}
-
-function handleResetFirewall() {
-  dialog.error({
-    title: '⚠️ 重置防火墙',
-    content: '这将恢复 Windows 防火墙的默认规则，所有自定义规则将被清除！确定要继续吗？',
-    positiveText: '确认重置', negativeText: '取消',
-    onPositiveClick: async () => {
-      try { await store.resetFirewall(); message.success('防火墙已重置为默认规则') }
-      catch (e) { message.error('重置失败: ' + String(e)) }
-    }
-  })
-}
 </script>
 
 <template>
@@ -111,24 +85,13 @@ function handleResetFirewall() {
           </div>
         </div>
 
-        <div class="nav-group">
-          <div class="nav-group-title">快捷操作</div>
-          <div class="nav-item" @click="handleToggleFirewall">
-            <NIcon :size="18" :color="store.firewallOn ? '#63e2b7' : '#e88080'"><PowerOutline/></NIcon>
-            <span>防火墙 {{ store.firewallOn ? '已开启' : '已关闭' }}</span>
-          </div>
-          <div class="nav-item" @click="handleResetFirewall">
-            <NIcon :size="18" color="#f0c040"><RefreshOutline/></NIcon><span>重置防火墙</span>
-          </div>
-        </div>
-
         <div class="sidebar-footer">
           <div class="stat"><span class="stat-label">总规则数</span><span class="stat-value">{{ store.rules.length }}</span></div>
           <div class="stat"><span class="stat-label">已启用</span><span class="stat-value enabled">{{ store.enabledCount }}</span></div>
         </div>
       </aside>
 
-      <main class="content"><RuleList @edit="handleEdit"/></main>
+      <main class="content"><RuleList :is-dark="isDark" @edit="handleEdit"/></main>
     </div>
 
     <RuleEditor v-model:show="showEditor" :rule="editingRule"/>
@@ -147,6 +110,10 @@ function handleResetFirewall() {
 .light-theme .stat-label { color: #999; }
 .light-theme .stat-value { color: #666; }
 .light-theme .title { color: #333; }
+.light-theme .sidebar-footer { border-top-color: rgba(0,0,0,0.06); }
+.light-theme .content { background: #f5f5f5; }
+.light-theme :deep(.n-input) { --n-color: #fff; --n-text-color: #333; --n-border: 1px solid #ddd; --n-placeholder-color: #aaa; }
+.light-theme :deep(.n-base-selection) { --n-color: #fff; --n-text-color: #333; --n-border: 1px solid #ddd; }
 .header { display: flex; align-items: center; justify-content: space-between; padding: 0 20px; height: 52px; background: #18181f; border-bottom: 1px solid rgba(255,255,255,0.06); flex-shrink: 0; -webkit-app-region: drag; }
 .header-left { display: flex; align-items: center; gap: 10px; -webkit-app-region: no-drag; }
 .header-right { display: flex; align-items: center; gap: 8px; -webkit-app-region: no-drag; }
