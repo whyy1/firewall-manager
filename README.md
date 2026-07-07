@@ -10,7 +10,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/platform-Windows-blue" alt="platform"/>
-  <img src="https://img.shields.io/badge/go-1.25-00ADD8?logo=go" alt="go"/>
+  <img src="https://img.shields.io/badge/go-1.23-00ADD8?logo=go" alt="go"/>
   <img src="https://img.shields.io/badge/vue-3-42b883?logo=vue.js" alt="vue"/>
   <img src="https://img.shields.io/badge/wails-v2-111111" alt="wails"/>
   <img src="https://img.shields.io/github/license/whyy1/firewall-manager" alt="license"/>
@@ -50,7 +50,7 @@
 ### 从源码构建
 
 **环境要求：**
-- Go 1.25+
+- Go 1.23+
 - Node.js 18+
 - Wails CLI v2
 
@@ -126,7 +126,7 @@ Go to the [Releases](https://github.com/whyy1/firewall-manager/releases) page to
 ### Build from Source
 
 **Requirements:**
-- Go 1.25+
+- Go 1.23+
 - Node.js 18+
 - Wails CLI v2
 
