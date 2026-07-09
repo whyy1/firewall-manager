@@ -3,9 +3,11 @@ package main
 import (
 	"context"
 	"fmt"
+	"os/exec"
 
 	"firewall-manager/internal/admin"
 	"firewall-manager/internal/firewall"
+	"firewall-manager/internal/ports"
 )
 
 // App 应用主结构体，方法会被绑定到前端
@@ -85,4 +87,20 @@ func (a *App) SetFirewallEnabled(enabled bool) error {
 // ResetFirewall 重置防火墙为默认规则
 func (a *App) ResetFirewall() error {
 	return firewall.ResetFirewall()
+}
+
+// GetServicePorts 获取常用服务端口列表
+func (a *App) GetServicePorts() []ports.ServicePort {
+	return ports.GetServicePorts()
+}
+
+// ChangeServicePort 修改服务端口
+func (a *App) ChangeServicePort(serviceName string, newPort int) error {
+	return ports.ChangeServicePort(serviceName, newPort)
+}
+
+// OpenExplorer 打开资源管理器并选中指定文件
+func (a *App) OpenExplorer(path string) error {
+	cmd := exec.Command("explorer.exe", "/select,", path)
+	return cmd.Start()
 }

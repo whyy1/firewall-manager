@@ -14,6 +14,10 @@ export function BlockApp(arg1) {
   return window['go']['main']['App']['BlockApp'](arg1);
 }
 
+export function ChangeServicePort(arg1, arg2) {
+  return window['go']['main']['App']['ChangeServicePort'](arg1, arg2);
+}
+
 export function DeleteRule(arg1) {
   return window['go']['main']['App']['DeleteRule'](arg1);
 }
@@ -26,8 +30,16 @@ export function GetRules(arg1, arg2) {
   return window['go']['main']['App']['GetRules'](arg1, arg2);
 }
 
+export function GetServicePorts() {
+  return window['go']['main']['App']['GetServicePorts']();
+}
+
 export function IsAdmin() {
   return window['go']['main']['App']['IsAdmin']();
+}
+
+export function OpenExplorer(arg1) {
+  return window['go']['main']['App']['OpenExplorer'](arg1);
 }
 
 export function ResetFirewall() {

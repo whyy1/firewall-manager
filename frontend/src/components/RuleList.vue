@@ -1,13 +1,14 @@
 <script setup>
 import {h, computed, ref, onMounted, onBeforeUnmount} from 'vue'
 import {store} from '../stores/rules.js'
-import {NIcon, NTag, NSwitch, NButton, useMessage, useDialog} from 'naive-ui'
+import {NIcon, NTag, NSwitch, NButton, NTooltip, useMessage, useDialog} from 'naive-ui'
 import {
   TrashOutline,
   CreateOutline,
   ShieldCheckmarkOutline,
   CloseCircleOutline,
 } from '@vicons/ionicons5'
+import {OpenExplorer} from '../../wailsjs/go/main/App'
 
 const props = defineProps({ isDark: { type: Boolean, default: true } })
 const emit = defineEmits(['edit'])
@@ -16,10 +17,10 @@ const dialog = useDialog()
 
 // ============ 列宽拖拽（DOM 直接操作 + rAF 节流，避免拖拽期间 Vue 重渲染） ============
 const colWidths = ref({
-  enabled: 60, name: 220, action: 70, protocol: 80,
+  enabled: 60, name: 200, program: 150, action: 70, protocol: 80,
   localAddr: 140, remoteAddr: 140, localPort: 90, remotePort: 90, actions: 80,
 })
-const colKeys = ['enabled','name','action','protocol','localAddr','remoteAddr','localPort','remotePort','actions']
+const colKeys = ['enabled','name','program','action','protocol','localAddr','remoteAddr','localPort','remotePort','actions']
 let dragState = null
 let rafId = 0
 
@@ -39,7 +40,15 @@ function onGlobalMouseDown(e) {
   if (idx < 0) return
   e.preventDefault()
   e.stopPropagation()
-  dragState = { idx, startX: e.clientX, startW: colWidths.value[colKeys[idx]], pendingW: 0 }
+  // 拖拽开始时一次性缓存 DOM 引用，避免每帧重复查询
+  const table = document.querySelector('.n-data-table')
+  const th = table ? table.querySelectorAll('.n-data-table-th')[idx] : null
+  const tds = table
+    ? Array.from(table.querySelectorAll('.n-data-table-tr'))
+        .map(tr => tr.querySelectorAll('td')[idx])
+        .filter(Boolean)
+    : []
+  dragState = { idx, startX: e.clientX, startW: colWidths.value[colKeys[idx]], pendingW: 0, th, tds }
   document.addEventListener('mousemove', onGlobalMouseMove)
   document.addEventListener('mouseup', onGlobalMouseUp)
   document.body.style.cursor = 'col-resize'
@@ -55,26 +64,18 @@ function onGlobalMouseMove(e) {
     rafId = requestAnimationFrame(() => {
       rafId = 0
       if (!dragState) return
-      // 直接操作 n-data-table 内部 DOM 的 th/td 宽度
-      const table = document.querySelector('.n-data-table')
-      if (table) {
-        const ths = table.querySelectorAll('.n-data-table-th')
-        if (ths[dragState.idx]) {
-          ths[dragState.idx].style.width = dragState.pendingW + 'px'
-          ths[dragState.idx].style.minWidth = dragState.pendingW + 'px'
-          ths[dragState.idx].style.maxWidth = dragState.pendingW + 'px'
-          // 同步对应列的 td
-          const rows = table.querySelectorAll('.n-data-table-tr')
-          rows.forEach(tr => {
-            const tds = tr.querySelectorAll('td')
-            if (tds[dragState.idx]) {
-              tds[dragState.idx].style.width = dragState.pendingW + 'px'
-              tds[dragState.idx].style.minWidth = dragState.pendingW + 'px'
-              tds[dragState.idx].style.maxWidth = dragState.pendingW + 'px'
-            }
-          })
-        }
+      const w = dragState.pendingW + 'px'
+      // 直接使用缓存的 DOM 引用，避免每帧重复查询
+      if (dragState.th) {
+        dragState.th.style.width = w
+        dragState.th.style.minWidth = w
+        dragState.th.style.maxWidth = w
       }
+      dragState.tds.forEach(td => {
+        td.style.width = w
+        td.style.minWidth = w
+        td.style.maxWidth = w
+      })
     })
   }
 }
@@ -116,6 +117,22 @@ const columns = computed(() => {
       render: (row) => h(NSwitch, { value: row.enabled, size: 'small', onUpdateValue: () => handleToggle(row) }) },
     { title: '规则名称', key: 'name', width: w.name, minWidth: 100, ellipsis: { tooltip: true },
       render: (row) => h('span', { style: { color: '#ddd' } }, row.name) },
+    { title: '程序', key: 'program', width: w.program, minWidth: 100, ellipsis: { tooltip: true },
+      render: (row) => {
+        if (!row.program) return h('span', { style: { color: '#555' } }, '-')
+        const fileName = row.program.split('\\').pop()
+        return h(NTooltip, { trigger: 'hover' }, {
+          trigger: () => h('span', {
+            style: { color: '#4361ee', cursor: 'pointer', fontSize: '12px' },
+            onClick: () => handleOpenExplorer(row.program),
+          }, fileName),
+          default: () => h('div', [
+            h('p', { style: { margin: '0 0 4px' } }, row.program),
+            h('p', { style: { margin: '0', color: '#999', fontSize: '11px' } }, '点击打开文件所在目录'),
+          ])
+        })
+      }
+    },
     { title: '动作', key: 'action', width: w.action, minWidth: 60, maxWidth: 90, align: 'center',
       render: (row) => h(NTag, { type: row.action === 'allow' ? 'success' : 'error', size: 'tiny', bordered: false }, { default: () => row.action === 'allow' ? '允许' : '阻止' }) },
     { title: '协议', key: 'protocol', width: w.protocol, minWidth: 50, maxWidth: 100, align: 'center',
@@ -152,6 +169,11 @@ function handleDelete(rule) {
       catch (e) { message.error('删除失败: ' + String(e)) }
     }
   })
+}
+
+async function handleOpenExplorer(path) {
+  try { await OpenExplorer(path) }
+  catch (e) { message.error('打开失败: ' + String(e)) }
 }
 </script>
 

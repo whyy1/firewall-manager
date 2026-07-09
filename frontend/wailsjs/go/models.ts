@@ -35,3 +35,32 @@ export namespace firewall {
 
 }
 
+export namespace ports {
+	
+	export class ServicePort {
+	    name: string;
+	    serviceName: string;
+	    defaultPort: number;
+	    protocol: string;
+	    description: string;
+	    running: boolean;
+	    listenPort: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new ServicePort(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.serviceName = source["serviceName"];
+	        this.defaultPort = source["defaultPort"];
+	        this.protocol = source["protocol"];
+	        this.description = source["description"];
+	        this.running = source["running"];
+	        this.listenPort = source["listenPort"];
+	    }
+	}
+
+}
+

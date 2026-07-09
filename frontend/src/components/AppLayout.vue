@@ -4,10 +4,11 @@ import {store} from '../stores/rules.js'
 import {NIcon, useMessage} from 'naive-ui'
 import {
   ShieldCheckmarkOutline, SwapHorizontalOutline, SearchOutline, AddOutline,
-  SunnyOutline, MoonOutline,
+  SunnyOutline, MoonOutline, HardwareChipOutline,
 } from '@vicons/ionicons5'
 import RuleList from './RuleList.vue'
 import RuleEditor from './RuleEditor.vue'
+import PortManager from './PortManager.vue'
 import {IsAdmin} from '../../wailsjs/go/main/App'
 
 const props = defineProps({ isDark: Boolean })
@@ -16,6 +17,7 @@ const emit = defineEmits(['toggleTheme'])
 const isAdmin = ref(false)
 const showEditor = ref(false)
 const editingRule = ref(null)
+const currentView = ref('rules') // 'rules' | 'ports'
 const message = useMessage()
 
 // 搜索防抖
@@ -44,7 +46,8 @@ onMounted(async () => {
 
 function handleAdd() { editingRule.value = null; showEditor.value = true }
 function handleEdit(rule) { editingRule.value = rule; showEditor.value = true }
-function handleDirectionChange(dir) { store.setDirection(dir) }
+function handleDirectionChange(dir) { currentView.value = 'rules'; store.setDirection(dir) }
+function handleViewChange(view) { currentView.value = view }
 </script>
 
 <template>
@@ -57,18 +60,20 @@ function handleDirectionChange(dir) { store.setDirection(dir) }
         <n-tag v-else type="warning" size="small" :bordered="false">需要管理员权限</n-tag>
       </div>
       <div class="header-right">
-        <n-input v-model:value="nameInput" placeholder="规则名称" clearable size="small" style="width:140px">
-          <template #prefix><NIcon :size="14" color="#999"><SearchOutline/></NIcon></template>
-        </n-input>
-        <n-input v-model:value="portInput" placeholder="端口" clearable size="small" style="width:70px"/>
-        <n-input v-model:value="addrInput" placeholder="地址" clearable size="small" style="width:100px"/>
-        <n-select v-model:value="store.protocolFilter" :options="protocolOpts" size="small" style="width:100px" @update:value="store.setProtocolFilter"/>
-        <n-select v-model:value="store.actionFilter" :options="[{label:'全部动作',value:'all'},{label:'允许',value:'allow'},{label:'阻止',value:'block'}]" size="small" style="width:90px" @update:value="store.setActionFilter"/>
-        <n-select v-model:value="store.statusFilter" :options="[{label:'全部状态',value:'all'},{label:'已启用',value:'enabled'},{label:'已禁用',value:'disabled'}]" size="small" style="width:90px" @update:value="store.setStatusFilter"/>
+        <template v-if="currentView === 'rules'">
+          <n-input v-model:value="nameInput" placeholder="规则名称" clearable size="small" style="width:140px">
+            <template #prefix><NIcon :size="14" color="#999"><SearchOutline/></NIcon></template>
+          </n-input>
+          <n-input v-model:value="portInput" placeholder="端口" clearable size="small" style="width:70px"/>
+          <n-input v-model:value="addrInput" placeholder="地址" clearable size="small" style="width:100px"/>
+          <n-select v-model:value="store.protocolFilter" :options="protocolOpts" size="small" style="width:100px" @update:value="store.setProtocolFilter"/>
+          <n-select v-model:value="store.actionFilter" :options="[{label:'全部动作',value:'all'},{label:'允许',value:'allow'},{label:'阻止',value:'block'}]" size="small" style="width:90px" @update:value="store.setActionFilter"/>
+          <n-select v-model:value="store.statusFilter" :options="[{label:'全部状态',value:'all'},{label:'已启用',value:'enabled'},{label:'已禁用',value:'disabled'}]" size="small" style="width:90px" @update:value="store.setStatusFilter"/>
+        </template>
         <n-button text size="small" @click="emit('toggleTheme')" :title="isDark ? '切换亮色' : '切换暗色'">
           <NIcon :size="20" :color="isDark ? '#f0c040' : '#666'"><MoonOutline v-if="isDark"/><SunnyOutline v-else/></NIcon>
         </n-button>
-        <n-button type="primary" size="small" @click="handleAdd">
+        <n-button v-if="currentView === 'rules'" type="primary" size="small" @click="handleAdd">
           <template #icon><NIcon><AddOutline/></NIcon></template>添加规则
         </n-button>
       </div>
@@ -77,11 +82,15 @@ function handleDirectionChange(dir) { store.setDirection(dir) }
     <div class="body">
       <aside class="sidebar">
         <div class="nav-group">
-          <div class="nav-item" :class="{active: store.direction === 'in'}" @click="handleDirectionChange('in')">
+          <div class="nav-item" :class="{active: currentView === 'rules' && store.direction === 'in'}" @click="handleDirectionChange('in')">
             <NIcon :size="18"><SwapHorizontalOutline/></NIcon><span>入站规则</span>
           </div>
-          <div class="nav-item" :class="{active: store.direction === 'out'}" @click="handleDirectionChange('out')">
+          <div class="nav-item" :class="{active: currentView === 'rules' && store.direction === 'out'}" @click="handleDirectionChange('out')">
             <NIcon :size="18"><SwapHorizontalOutline style="transform:rotate(180deg)"/></NIcon><span>出站规则</span>
+          </div>
+          <div class="nav-divider"></div>
+          <div class="nav-item" :class="{active: currentView === 'ports'}" @click="handleViewChange('ports')">
+            <NIcon :size="18"><HardwareChipOutline/></NIcon><span>常用端口</span>
           </div>
         </div>
 
@@ -91,7 +100,10 @@ function handleDirectionChange(dir) { store.setDirection(dir) }
         </div>
       </aside>
 
-      <main class="content"><RuleList :is-dark="isDark" @edit="handleEdit"/></main>
+      <main class="content">
+        <RuleList v-if="currentView === 'rules'" :is-dark="isDark" @edit="handleEdit"/>
+        <PortManager v-else-if="currentView === 'ports'" :is-dark="isDark"/>
+      </main>
     </div>
 
     <RuleEditor v-model:show="showEditor" :rule="editingRule"/>
@@ -122,6 +134,8 @@ function handleDirectionChange(dir) { store.setDirection(dir) }
 .sidebar { width: 200px; background: #16161d; border-right: 1px solid rgba(255,255,255,0.06); display: flex; flex-direction: column; padding: 12px 0; flex-shrink: 0; }
 .nav-group { padding: 0 8px; margin-bottom: 8px; }
 .nav-group-title { font-size: 11px; color: #666; padding: 8px 12px 4px; text-transform: uppercase; letter-spacing: 1px; }
+.nav-divider { height: 1px; background: rgba(255,255,255,0.06); margin: 8px 12px; }
+.light-theme .nav-divider { background: rgba(0,0,0,0.06); }
 .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 14px; border-radius: 6px; cursor: pointer; font-size: 13px; color: #aaa; transition: all 0.15s; }
 .nav-item:hover { background: rgba(255,255,255,0.04); color: #ddd; }
 .nav-item.active { background: rgba(67,97,238,0.15); color: #4361ee; }
