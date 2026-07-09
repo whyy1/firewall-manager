@@ -32,8 +32,11 @@
 
 - 🔍 **规则浏览** — 查看所有入站/出站防火墙规则
 - ✏️ **规则管理** — 添加、编辑、删除、启用/禁用规则
+- 📁 **程序显示** — 显示规则限定的程序路径，点击可跳转到文件所在目录
 - 🔎 **智能搜索** — 按名称、端口、地址分栏搜索，支持协议、动作、状态下拉筛选
-- 📏 **列宽拖拽** — 拖拽表头边框自定义列宽
+- 📏 **列宽拖拽** — 拖拽表头边框自定义列宽（性能优化，无卡顿）
+- 🖥️ **常用端口** — 查看 Windows 常用服务的运行状态和实际监听端口
+- 🔧 **端口修改** — 支持修改 RDP/WinRM/SMB 等服务的监听端口
 - 🌗 **明暗主题** — 一键切换深色/浅色主题
 - 🇨🇳 **中文适配** — 完整支持中文 Windows 的 GBK 编码输出
 
@@ -91,10 +94,15 @@ wails build
 ├── main.go / app.go           # Wails 入口与前端绑定
 ├── internal/
 │   ├── firewall/              # 防火墙操作封装
+│   ├── ports/                 # 常用端口管理
 │   └── admin/                 # 管理员权限检测
 ├── frontend/
 │   └── src/
 │       ├── components/        # Vue 组件
+│       │   ├── AppLayout.vue  # 主布局（导航、视图切换）
+│       │   ├── RuleList.vue   # 规则列表（拖拽列宽、程序跳转）
+│       │   ├── RuleEditor.vue # 规则编辑器
+│       │   └── PortManager.vue # 常用端口管理
 │       ├── stores/            # 状态管理
 │       └── styles/            # 全局样式
 └── build/                     # 构建资源与打包配置
@@ -114,8 +122,11 @@ No more digging through Control Panel — manage all your firewall rules from a 
 
 - 🔍 **Browse Rules** — View all inbound/outbound firewall rules
 - ✏️ **Manage Rules** — Add, edit, delete, enable/disable rules
+- 📁 **Program Display** — Show program path for rules, click to open file location
 - 🔎 **Smart Search** — Filter by name, port, address with protocol/action/status dropdowns
-- 📏 **Resizable Columns** — Drag table header edges to resize columns
+- 📏 **Resizable Columns** — Drag table header edges to resize columns (optimized, no lag)
+- 🖥️ **Common Ports** — View Windows service status and actual listening ports
+- 🔧 **Port Modification** — Modify RDP/WinRM/SMB service listening ports
 - 🌗 **Dark/Light Theme** — Toggle between dark and light themes
 - 🇨🇳 **Chinese Windows Support** — Full GBK encoding support for netsh output
 
@@ -167,10 +178,15 @@ The output binary will be at `build/bin/firewall-manager.exe`.
 ├── main.go / app.go           # Wails entry point & frontend bindings
 ├── internal/
 │   ├── firewall/              # Firewall operations (netsh wrapper)
+│   ├── ports/                 # Common ports management
 │   └── admin/                 # Admin privilege detection
 ├── frontend/
 │   └── src/
 │       ├── components/        # Vue components
+│       │   ├── AppLayout.vue  # Main layout (navigation, view switching)
+│       │   ├── RuleList.vue   # Rule list (drag columns, program jump)
+│       │   ├── RuleEditor.vue # Rule editor
+│       │   └── PortManager.vue # Common ports management
 │       ├── stores/            # State management
 │       └── styles/            # Global styles
 └── build/                     # Build assets & packaging config
