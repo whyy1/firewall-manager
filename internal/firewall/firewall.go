@@ -79,7 +79,7 @@ func GetRules(direction RuleDirection, limit int) ([]FirewallRule, error) {
 		dirStr = "Out"
 	}
 
-	cmd := newHiddenCmd("netsh", "advfirewall", "firewall", "show", "rule", "name=all", "dir="+dirStr)
+	cmd := newHiddenCmd("netsh", "advfirewall", "firewall", "show", "rule", "name=all", "dir="+dirStr, "verbose")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return nil, fmt.Errorf("执行 netsh 失败: %w\n%s", err, string(output))
