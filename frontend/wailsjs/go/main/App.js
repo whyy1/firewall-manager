@@ -42,6 +42,10 @@ export function OpenExplorer(arg1) {
   return window['go']['main']['App']['OpenExplorer'](arg1);
 }
 
+export function OpenFileDialog() {
+  return window['go']['main']['App']['OpenFileDialog']();
+}
+
 export function ResetFirewall() {
   return window['go']['main']['App']['ResetFirewall']();
 }

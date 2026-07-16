@@ -211,6 +211,12 @@ func buildAddArgs(rule FirewallRule) []string {
 	if rule.Program != "" {
 		args = append(args, "program="+rule.Program)
 	}
+	if rule.LocalAddr != "" {
+		args = append(args, "localip="+rule.LocalAddr)
+	}
+	if rule.RemoteAddr != "" {
+		args = append(args, "remoteip="+rule.RemoteAddr)
+	}
 	if rule.Protocol != "" {
 		args = append(args, "protocol="+rule.Protocol)
 	} else {

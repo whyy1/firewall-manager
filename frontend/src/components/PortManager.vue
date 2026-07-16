@@ -1,8 +1,8 @@
 <script setup>
 import {h, onMounted, computed, ref} from 'vue'
 import {portStore} from '../stores/ports.js'
-import {NIcon, NTag, NButton, useMessage, NInputNumber} from 'naive-ui'
-import {CloseCircleOutline, HardwareChipOutline, CreateOutline} from '@vicons/ionicons5'
+import {NIcon, NTag, NButton, NTooltip, useMessage, NInputNumber} from 'naive-ui'
+import {CloseCircleOutline, HardwareChipOutline, CreateOutline, InformationCircleOutline} from '@vicons/ionicons5'
 
 const props = defineProps({ isDark: { type: Boolean, default: true } })
 const message = useMessage()
@@ -44,32 +44,65 @@ const columns = computed(() => [
   {
     title: '服务名称',
     key: 'name',
-    width: 150,
+    width: 160,
     minWidth: 120,
-    render: (row) => h('span', { style: { fontWeight: 500, color: '#e0e0e6' } }, row.name),
+    render: (row) => h('div', { style: { display: 'flex', alignItems: 'center', gap: '8px' } }, [
+      h(NIcon, {
+        size: 16,
+        color: row.running ? '#63e2b7' : '#666',
+      }, { default: () => h(HardwareChipOutline) }),
+      h('span', {
+        style: {
+          fontWeight: 500,
+          color: '#e0e0e6',
+          fontSize: '13px',
+        }
+      }, row.name),
+    ]),
   },
   {
     title: '服务状态',
     key: 'running',
-    width: 90,
+    width: 100,
     minWidth: 80,
     align: 'center',
     render: (row) => row.running
-      ? h(NTag, { type: 'success', size: 'small', bordered: false }, { default: () => '运行中' })
-      : h(NTag, { type: 'default', size: 'small', bordered: false }, { default: () => '未运行' }),
+      ? h(NTag, {
+          type: 'success',
+          size: 'small',
+          bordered: false,
+          round: true,
+        }, { default: () => '运行中' })
+      : h(NTag, {
+          type: 'default',
+          size: 'small',
+          bordered: false,
+          round: true,
+        }, { default: () => '未运行' }),
   },
   {
     title: '监听端口',
     key: 'listenPort',
-    width: 120,
-    minWidth: 90,
+    width: 130,
+    minWidth: 100,
     align: 'center',
     render: (row) => {
-      if (row.listenPort === 0) return h('span', { style: { color: '#666' } }, '未监听')
+      if (row.listenPort === 0) return h('span', { style: { color: '#666', fontSize: '12px' } }, '未监听')
       const isDefault = row.listenPort === row.defaultPort
-      return h('span', [
-        h(NTag, { type: 'info', size: 'small', bordered: false }, { default: () => row.listenPort }),
-        !isDefault ? h('span', { style: { color: '#e88080', fontSize: '11px', marginLeft: '4px' } }, '(非默认)') : null,
+      return h('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' } }, [
+        h(NTag, {
+          type: 'info',
+          size: 'small',
+          bordered: false,
+        }, { default: () => row.listenPort }),
+        !isDefault ? h(NTooltip, { trigger: 'hover' }, {
+          trigger: () => h(NIcon, {
+            size: 14,
+            color: '#e88080',
+            style: { cursor: 'help' },
+          }, { default: () => h(InformationCircleOutline) }),
+          default: () => h('span', { style: { fontSize: '12px' } }, `默认端口: ${row.defaultPort}`),
+        }) : null,
       ])
     },
   },
@@ -79,25 +112,41 @@ const columns = computed(() => [
     width: 90,
     minWidth: 70,
     align: 'center',
-    render: (row) => h('span', { style: { color: '#888', fontSize: '12px' } }, row.defaultPort),
+    render: (row) => h('span', {
+      style: {
+        color: '#888',
+        fontSize: '12px',
+        fontFamily: 'monospace',
+      }
+    }, row.defaultPort),
   },
   {
     title: '协议',
     key: 'protocol',
-    width: 60,
-    minWidth: 50,
+    width: 70,
+    minWidth: 60,
     align: 'center',
-    render: (row) => h('span', { style: { color: '#888', fontSize: '12px', textTransform: 'uppercase' } }, row.protocol),
+    render: (row) => h(NTag, {
+      size: 'small',
+      bordered: false,
+      type: row.protocol === 'tcp' ? 'warning' : 'info',
+    }, { default: () => row.protocol.toUpperCase() }),
   },
   {
     title: '说明',
     key: 'description',
     minWidth: 200,
     ellipsis: { tooltip: true },
-    render: (row) => h('span', { style: { color: '#888', fontSize: '12px' } }, row.description),
+    render: (row) => h('span', {
+      style: {
+        color: '#888',
+        fontSize: '12px',
+        lineHeight: '1.5',
+      }
+    }, row.description),
   },
   {
-    title: '修改端口',
+    title: '操作',
     key: 'editPort',
     width: 80,
     minWidth: 70,
@@ -105,9 +154,11 @@ const columns = computed(() => [
     render: (row) => h(NButton, {
       text: true,
       size: 'small',
+      type: 'primary',
       onClick: () => openPortDialog(row),
+      style: { minWidth: '44px', minHeight: '44px' },
     }, {
-      icon: () => h(NIcon, { size: 16, color: '#4361ee' }, { default: () => h(CreateOutline) }),
+      icon: () => h(NIcon, { size: 16 }, { default: () => h(CreateOutline) }),
     }),
   },
 ])
@@ -118,18 +169,26 @@ const scrollX = computed(() => columns.value.reduce((s, c) => s + (c.width || c.
 <template>
   <div class="port-manager">
     <div class="port-header">
-      <NIcon :size="20" color="#4361ee"><HardwareChipOutline/></NIcon>
-      <span class="port-title">常用端口管理</span>
-      <span class="port-desc">查看服务运行状态、实际监听端口</span>
+      <div class="port-header-left">
+        <NIcon :size="24" color="#4361ee"><HardwareChipOutline/></NIcon>
+        <div class="port-header-text">
+          <h2 class="port-title">常用端口管理</h2>
+          <p class="port-desc">查看服务运行状态、实际监听端口</p>
+        </div>
+      </div>
+      <n-button size="small" @click="portStore.fetchPorts()" :loading="portStore.loading">
+        刷新
+      </n-button>
     </div>
 
-    <div v-if="portStore.loading" class="loading-state">
-      <n-spin size="medium"/><span>加载端口信息...</span>
+    <div v-if="portStore.loading && portStore.ports.length === 0" class="loading-state">
+      <n-spin size="large"/>
+      <span class="loading-text">加载端口信息...</span>
     </div>
     <div v-else-if="portStore.error" class="error-state">
-      <NIcon :size="40" color="#e88080"><CloseCircleOutline/></NIcon>
-      <span>{{ portStore.error }}</span>
-      <n-button size="small" @click="portStore.fetchPorts()">重试</n-button>
+      <NIcon :size="48" color="#e88080"><CloseCircleOutline/></NIcon>
+      <span class="error-text">{{ portStore.error }}</span>
+      <n-button type="primary" size="small" @click="portStore.fetchPorts()">重试</n-button>
     </div>
     <n-data-table
       v-else
@@ -141,6 +200,7 @@ const scrollX = computed(() => columns.value.reduce((s, c) => s + (c.width || c.
       :bordered="false"
       size="small"
       striped
+      :row-class-name="(row) => !row.running ? 'row-stopped' : ''"
     />
 
     <!-- 修改端口对话框 -->
@@ -150,21 +210,36 @@ const scrollX = computed(() => columns.value.reduce((s, c) => s + (c.width || c.
       :negative-button-props="{ disabled: changing }"
       :closable="!changing" :mask-closable="!changing"
       @positive-click="handlePortChange">
-      <div v-if="editingService" style="margin-bottom: 16px;">
-        <p style="margin-bottom: 8px; color: #e0e0e6;">
-          服务: <strong>{{ editingService.name }}</strong>
-        </p>
-        <p style="margin-bottom: 8px; color: #888; font-size: 12px;">
-          当前端口: {{ editingService.listenPort || editingService.defaultPort }}
-          (默认: {{ editingService.defaultPort }})
-        </p>
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <span style="color: #e0e0e6;">新端口:</span>
-          <n-input-number v-model:value="newPort" :min="1" :max="65535" size="small" style="width: 120px;" :disabled="changing"/>
+      <div v-if="editingService" class="port-dialog-content">
+        <div class="port-dialog-info">
+          <p class="port-dialog-label">服务</p>
+          <p class="port-dialog-value">{{ editingService.name }}</p>
         </div>
-        <p style="margin-top: 12px; color: #e88080; font-size: 12px;">
-          ⚠️ 修改端口后服务将自动重启，当前连接可能会断开
-        </p>
+        <div class="port-dialog-info">
+          <p class="port-dialog-label">当前端口</p>
+          <p class="port-dialog-value">
+            {{ editingService.listenPort || editingService.defaultPort }}
+            <span v-if="editingService.listenPort !== editingService.defaultPort" class="port-dialog-default">
+              (默认: {{ editingService.defaultPort }})
+            </span>
+          </p>
+        </div>
+        <div class="port-dialog-input">
+          <span class="port-dialog-label">新端口</span>
+          <n-input-number
+            v-model:value="newPort"
+            :min="1"
+            :max="65535"
+            size="small"
+            style="width: 120px;"
+            :disabled="changing"
+            placeholder="1-65535"
+          />
+        </div>
+        <div class="port-dialog-warning">
+          <NIcon :size="16" color="#e88080"><InformationCircleOutline/></NIcon>
+          <span>修改端口后服务将自动重启，当前连接可能会断开</span>
+        </div>
       </div>
     </n-modal>
   </div>
@@ -176,31 +251,112 @@ const scrollX = computed(() => columns.value.reduce((s, c) => s + (c.width || c.
   flex-direction: column;
   height: 100%;
   overflow: hidden;
+  gap: 20px;
 }
+
 .port-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 16px;
+  justify-content: space-between;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
+
+.port-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.port-header-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
 .port-title {
-  font-size: 15px;
+  font-size: 18px;
   font-weight: 600;
   color: #e0e0e6;
+  margin: 0;
+  line-height: 1.3;
 }
+
 .port-desc {
-  font-size: 12px;
-  color: #666;
-  margin-left: 8px;
+  font-size: 13px;
+  color: #888;
+  margin: 0;
+  line-height: 1.4;
 }
+
 .loading-state, .error-state {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  padding: 60px 0;
-  color: #666;
+  gap: 16px;
+  padding: 80px 0;
+  color: #888;
+}
+
+.loading-text, .error-text {
   font-size: 14px;
+  line-height: 1.5;
+}
+
+:deep(.row-stopped td) {
+  opacity: 0.6;
+}
+
+.port-dialog-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+.port-dialog-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.port-dialog-label {
+  font-size: 12px;
+  color: #888;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.port-dialog-value {
+  font-size: 14px;
+  color: #e0e0e6;
+  margin: 0;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.port-dialog-default {
+  font-size: 12px;
+  color: #888;
+  font-weight: normal;
+}
+
+.port-dialog-input {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.port-dialog-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px;
+  background: rgba(232, 128, 128, 0.1);
+  border-radius: 6px;
+  font-size: 12px;
+  color: #e88080;
+  line-height: 1.5;
 }
 </style>

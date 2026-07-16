@@ -23,6 +23,8 @@ export function IsAdmin():Promise<boolean>;
 
 export function OpenExplorer(arg1:string):Promise<void>;
 
+export function OpenFileDialog():Promise<string>;
+
 export function ResetFirewall():Promise<void>;
 
 export function SetFirewallEnabled(arg1:boolean):Promise<void>;

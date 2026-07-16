@@ -113,7 +113,7 @@ onBeforeUnmount(() => {
 const columns = computed(() => {
   const w = colWidths.value
   return [
-    { title: '状态', key: 'enabled', width: w.enabled, minWidth: 50, maxWidth: 80, align: 'center',
+    { title: '状态', key: 'enabled', width: w.enabled, minWidth: 50, maxWidth: 80, align: 'center', fixed: 'left',
       render: (row) => h(NSwitch, { value: row.enabled, size: 'small', onUpdateValue: () => handleToggle(row) }) },
     { title: '规则名称', key: 'name', width: w.name, minWidth: 100, ellipsis: { tooltip: true },
       render: (row) => h('span', { style: { color: '#ddd' } }, row.name) },
@@ -145,7 +145,7 @@ const columns = computed(() => {
       render: (row) => h('span', { style: { color: '#888', fontSize: '12px' } }, row.localPort || '-') },
     { title: '远程端口', key: 'remotePort', width: w.remotePort, minWidth: 60, maxWidth: 140, ellipsis: { tooltip: true },
       render: (row) => h('span', { style: { color: '#888', fontSize: '12px' } }, row.remotePort || '-') },
-    { title: '管理', key: 'actions', width: w.actions, minWidth: 70, maxWidth: 100, align: 'center',
+    { title: '管理', key: 'actions', width: w.actions, minWidth: 70, maxWidth: 100, align: 'center', fixed: 'right',
       render: (row) => h('div', { style: { display: 'flex', gap: '6px', justifyContent: 'center' } }, [
         h(NButton, { text: true, size: 'small', onClick: () => emit('edit', row) }, { icon: () => h(NIcon, { size: 16, color: '#4361ee' }, { default: () => h(CreateOutline) }) }),
         h(NButton, { text: true, size: 'small', onClick: () => handleDelete(row) }, { icon: () => h(NIcon, { size: 16, color: '#e88080' }, { default: () => h(TrashOutline) }) }),

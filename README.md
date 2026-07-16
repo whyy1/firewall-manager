@@ -33,8 +33,10 @@
 - 🔍 **规则浏览** — 查看所有入站/出站防火墙规则
 - ✏️ **规则管理** — 添加、编辑、删除、启用/禁用规则
 - 📁 **程序显示** — 显示规则限定的程序路径，点击可跳转到文件所在目录
+- 📂 **程序选择** — 添加规则时支持浏览选择程序文件
 - 🔎 **智能搜索** — 按名称、端口、地址分栏搜索，支持协议、动作、状态下拉筛选
 - 📏 **列宽拖拽** — 拖拽表头边框自定义列宽（性能优化，无卡顿）
+- 📌 **固定列** — 状态列和管理列固定在两侧，滚动时始终可见
 - 🖥️ **常用端口** — 查看 Windows 常用服务的运行状态和实际监听端口
 - 🔧 **端口修改** — 支持修改 RDP/WinRM/SMB 等服务的监听端口
 - 🌗 **明暗主题** — 一键切换深色/浅色主题
@@ -123,8 +125,10 @@ No more digging through Control Panel — manage all your firewall rules from a 
 - 🔍 **Browse Rules** — View all inbound/outbound firewall rules
 - ✏️ **Manage Rules** — Add, edit, delete, enable/disable rules
 - 📁 **Program Display** — Show program path for rules, click to open file location
+- 📂 **Program Picker** — Browse and select program files when adding rules
 - 🔎 **Smart Search** — Filter by name, port, address with protocol/action/status dropdowns
 - 📏 **Resizable Columns** — Drag table header edges to resize columns (optimized, no lag)
+- 📌 **Fixed Columns** — Status and action columns pinned to sides, always visible
 - 🖥️ **Common Ports** — View Windows service status and actual listening ports
 - 🔧 **Port Modification** — Modify RDP/WinRM/SMB service listening ports
 - 🌗 **Dark/Light Theme** — Toggle between dark and light themes

@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
+	"strings"
+	"syscall"
 
 	"firewall-manager/internal/admin"
 	"firewall-manager/internal/firewall"
@@ -103,4 +105,24 @@ func (a *App) ChangeServicePort(serviceName string, newPort int) error {
 func (a *App) OpenExplorer(path string) error {
 	cmd := exec.Command("explorer.exe", "/select,", path)
 	return cmd.Start()
+}
+
+// OpenFileDialog 打开文件选择对话框，返回选中的文件路径
+func (a *App) OpenFileDialog() (string, error) {
+	// 使用 PowerShell 打开文件选择对话框
+	psScript := `
+	Add-Type -AssemblyName System.Windows.Forms
+	$dialog = New-Object System.Windows.Forms.OpenFileDialog
+	$dialog.Filter = "可执行文件 (*.exe)|*.exe|所有文件 (*.*)|*.*"
+	$dialog.Title = "选择程序"
+	$dialog.ShowDialog() | Out-Null
+	$dialog.FileName
+	`
+	cmd := exec.Command("powershell", "-Command", psScript)
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+	output, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(output)), nil
 }
