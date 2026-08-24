@@ -39,6 +39,10 @@
 - 📌 **固定列** — 状态列和管理列固定在两侧，滚动时始终可见
 - 🖥️ **常用端口** — 查看 Windows 常用服务的运行状态和实际监听端口
 - 🔧 **端口修改** — 支持修改 RDP/WinRM/SMB 等服务的监听端口
+- 🗄️ **SMB 文件共享** — 管理本机 SMB 共享（新建/删除），查看服务与协议状态
+- 🔌 **活动会话** — 查看当前连接的 SMB 会话，支持强制断开
+- 🌐 **已连接共享** — 检测本机已连接或映射的局域网共享
+- 🔒 **SMB 安全** — 一键关闭不安全的 SMB1，管理“文件和打印机共享”防火墙规则组
 - 🌗 **明暗主题** — 一键切换深色/浅色主题
 - 🇨🇳 **中文适配** — 完整支持中文 Windows 的 GBK 编码输出
 
@@ -97,6 +101,7 @@ wails build
 ├── internal/
 │   ├── firewall/              # 防火墙操作封装
 │   ├── ports/                 # 常用端口管理
+│   ├── smb/                   # SMB 文件共享管理
 │   └── admin/                 # 管理员权限检测
 ├── frontend/
 │   └── src/
@@ -104,7 +109,8 @@ wails build
 │       │   ├── AppLayout.vue  # 主布局（导航、视图切换）
 │       │   ├── RuleList.vue   # 规则列表（拖拽列宽、程序跳转）
 │       │   ├── RuleEditor.vue # 规则编辑器
-│       │   └── PortManager.vue # 常用端口管理
+│       │   ├── PortManager.vue # 常用端口管理
+│       │   └── SMBManager.vue # SMB 文件共享（含 smb/ 子组件）
 │       ├── stores/            # 状态管理
 │       └── styles/            # 全局样式
 └── build/                     # 构建资源与打包配置
@@ -131,6 +137,10 @@ No more digging through Control Panel — manage all your firewall rules from a 
 - 📌 **Fixed Columns** — Status and action columns pinned to sides, always visible
 - 🖥️ **Common Ports** — View Windows service status and actual listening ports
 - 🔧 **Port Modification** — Modify RDP/WinRM/SMB service listening ports
+- 🗄️ **SMB Shares** — Manage local SMB shares (create/delete), view service & protocol status
+- 🔌 **Active Sessions** — Inspect connected SMB sessions and force-disconnect
+- 🌐 **Connected Shares** — Detect shares already connected or mapped on this machine
+- 🔒 **SMB Security** — One-click disable of insecure SMB1, manage the "File and Printer Sharing" firewall rule group
 - 🌗 **Dark/Light Theme** — Toggle between dark and light themes
 - 🇨🇳 **Chinese Windows Support** — Full GBK encoding support for netsh output
 
@@ -183,6 +193,7 @@ The output binary will be at `build/bin/firewall-manager.exe`.
 ├── internal/
 │   ├── firewall/              # Firewall operations (netsh wrapper)
 │   ├── ports/                 # Common ports management
+│   ├── smb/                   # SMB share management
 │   └── admin/                 # Admin privilege detection
 ├── frontend/
 │   └── src/
@@ -190,7 +201,8 @@ The output binary will be at `build/bin/firewall-manager.exe`.
 │       │   ├── AppLayout.vue  # Main layout (navigation, view switching)
 │       │   ├── RuleList.vue   # Rule list (drag columns, program jump)
 │       │   ├── RuleEditor.vue # Rule editor
-│       │   └── PortManager.vue # Common ports management
+│       │   ├── PortManager.vue # Common ports management
+│       │   └── SMBManager.vue # SMB shares (with smb/ sub-components)
 │       ├── stores/            # State management
 │       └── styles/            # Global styles
 └── build/                     # Build assets & packaging config

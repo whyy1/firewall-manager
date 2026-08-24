@@ -10,6 +10,9 @@ import (
 	"firewall-manager/internal/admin"
 	"firewall-manager/internal/firewall"
 	"firewall-manager/internal/ports"
+	"firewall-manager/internal/smb"
+
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // App 应用主结构体，方法会被绑定到前端
@@ -99,6 +102,73 @@ func (a *App) GetServicePorts() []ports.ServicePort {
 // ChangeServicePort 修改服务端口
 func (a *App) ChangeServicePort(serviceName string, newPort int) error {
 	return ports.ChangeServicePort(serviceName, newPort)
+}
+
+// GetSMBOverview 获取本机 SMB 服务和协议安全状态
+func (a *App) GetSMBOverview() (smb.Overview, error) {
+	return smb.GetOverview(a.ctx)
+}
+
+// GetSMBShares 获取本机 SMB 共享列表
+func (a *App) GetSMBShares() ([]smb.Share, error) {
+	return smb.GetShares(a.ctx)
+}
+
+// SetSMBServiceRunning 启动或停止本机 SMB 服务
+func (a *App) SetSMBServiceRunning(running bool) error {
+	return smb.SetServiceRunning(a.ctx, running)
+}
+
+// DisableSMB1 关闭已弃用的 SMB1 服务端协议
+func (a *App) DisableSMB1() error {
+	return smb.DisableSMB1(a.ctx)
+}
+
+// CreateSMBShare 创建本机 SMB 共享
+func (a *App) CreateSMBShare(request smb.CreateShareRequest) error {
+	return smb.CreateShare(a.ctx, request)
+}
+
+// RemoveSMBShare 删除本机普通 SMB 共享
+func (a *App) RemoveSMBShare(name string) error {
+	return smb.RemoveShare(a.ctx, name)
+}
+
+// DiscoverSMBNetworkShares 扫描局域网中可见的磁盘共享
+func (a *App) DiscoverSMBNetworkShares() ([]smb.NetworkShare, error) {
+	return smb.DiscoverNetworkShares(a.ctx)
+}
+
+// OpenSMBLocation 在资源管理器中打开本机目录或网络共享
+func (a *App) OpenSMBLocation(location string) error {
+	return smb.OpenLocation(location)
+}
+
+// GetSMBSessions 获取连接到本机的活动 SMB 会话
+func (a *App) GetSMBSessions() ([]smb.Session, error) {
+	return smb.GetSessions(a.ctx)
+}
+
+// CloseSMBSession 强制断开一条活动 SMB 会话
+func (a *App) CloseSMBSession(sessionID string) error {
+	return smb.CloseSession(a.ctx, sessionID)
+}
+
+// GetSMBFirewallStatus 获取文件和打印机共享防火墙规则状态
+func (a *App) GetSMBFirewallStatus() (smb.FirewallStatus, error) {
+	return smb.GetFirewallStatus(a.ctx)
+}
+
+// SetSMBFirewallEnabled 为所有网络配置文件启用或禁用文件和打印机共享规则组
+func (a *App) SetSMBFirewallEnabled(enabled bool) error {
+	return smb.SetFirewallEnabled(a.ctx, enabled)
+}
+
+// OpenDirectoryDialog 打开目录选择对话框
+func (a *App) OpenDirectoryDialog() (string, error) {
+	return runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
+		Title: "选择共享目录",
+	})
 }
 
 // OpenExplorer 打开资源管理器并选中指定文件

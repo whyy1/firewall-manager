@@ -4,11 +4,12 @@ import {store} from '../stores/rules.js'
 import {NIcon, useMessage} from 'naive-ui'
 import {
   ShieldCheckmarkOutline, SwapHorizontalOutline, SearchOutline, AddOutline,
-  SunnyOutline, MoonOutline, HardwareChipOutline,
+  SunnyOutline, MoonOutline, HardwareChipOutline, FolderOpenOutline,
 } from '@vicons/ionicons5'
 import RuleList from './RuleList.vue'
 import RuleEditor from './RuleEditor.vue'
 import PortManager from './PortManager.vue'
+import SMBManager from './SMBManager.vue'
 import {IsAdmin} from '../../wailsjs/go/main/App'
 
 const props = defineProps({ isDark: Boolean })
@@ -17,7 +18,7 @@ const emit = defineEmits(['toggleTheme'])
 const isAdmin = ref(false)
 const showEditor = ref(false)
 const editingRule = ref(null)
-const currentView = ref('rules') // 'rules' | 'ports'
+const currentView = ref('rules') // 'rules' | 'ports' | 'smb'
 const message = useMessage()
 
 // 搜索防抖
@@ -92,6 +93,9 @@ function handleViewChange(view) { currentView.value = view }
           <div class="nav-item" :class="{active: currentView === 'ports'}" @click="handleViewChange('ports')">
             <NIcon :size="18"><HardwareChipOutline/></NIcon><span>常用端口</span>
           </div>
+          <div class="nav-item" :class="{active: currentView === 'smb'}" @click="handleViewChange('smb')">
+            <NIcon :size="18"><FolderOpenOutline/></NIcon><span>SMB 文件共享</span>
+          </div>
         </div>
 
         <div class="sidebar-footer">
@@ -103,6 +107,7 @@ function handleViewChange(view) { currentView.value = view }
       <main class="content">
         <RuleList v-if="currentView === 'rules'" :is-dark="isDark" @edit="handleEdit"/>
         <PortManager v-else-if="currentView === 'ports'" :is-dark="isDark"/>
+        <SMBManager v-else-if="currentView === 'smb'" :is-admin="isAdmin"/>
       </main>
     </div>
 

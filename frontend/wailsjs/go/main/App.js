@@ -18,8 +18,24 @@ export function ChangeServicePort(arg1, arg2) {
   return window['go']['main']['App']['ChangeServicePort'](arg1, arg2);
 }
 
+export function CloseSMBSession(arg1) {
+  return window['go']['main']['App']['CloseSMBSession'](arg1);
+}
+
+export function CreateSMBShare(arg1) {
+  return window['go']['main']['App']['CreateSMBShare'](arg1);
+}
+
 export function DeleteRule(arg1) {
   return window['go']['main']['App']['DeleteRule'](arg1);
+}
+
+export function DisableSMB1() {
+  return window['go']['main']['App']['DisableSMB1']();
+}
+
+export function DiscoverSMBNetworkShares() {
+  return window['go']['main']['App']['DiscoverSMBNetworkShares']();
 }
 
 export function GetFirewallStatus() {
@@ -30,12 +46,32 @@ export function GetRules(arg1, arg2) {
   return window['go']['main']['App']['GetRules'](arg1, arg2);
 }
 
+export function GetSMBFirewallStatus() {
+  return window['go']['main']['App']['GetSMBFirewallStatus']();
+}
+
+export function GetSMBOverview() {
+  return window['go']['main']['App']['GetSMBOverview']();
+}
+
+export function GetSMBSessions() {
+  return window['go']['main']['App']['GetSMBSessions']();
+}
+
+export function GetSMBShares() {
+  return window['go']['main']['App']['GetSMBShares']();
+}
+
 export function GetServicePorts() {
   return window['go']['main']['App']['GetServicePorts']();
 }
 
 export function IsAdmin() {
   return window['go']['main']['App']['IsAdmin']();
+}
+
+export function OpenDirectoryDialog() {
+  return window['go']['main']['App']['OpenDirectoryDialog']();
 }
 
 export function OpenExplorer(arg1) {
@@ -46,12 +82,28 @@ export function OpenFileDialog() {
   return window['go']['main']['App']['OpenFileDialog']();
 }
 
+export function OpenSMBLocation(arg1) {
+  return window['go']['main']['App']['OpenSMBLocation'](arg1);
+}
+
+export function RemoveSMBShare(arg1) {
+  return window['go']['main']['App']['RemoveSMBShare'](arg1);
+}
+
 export function ResetFirewall() {
   return window['go']['main']['App']['ResetFirewall']();
 }
 
 export function SetFirewallEnabled(arg1) {
   return window['go']['main']['App']['SetFirewallEnabled'](arg1);
+}
+
+export function SetSMBFirewallEnabled(arg1) {
+  return window['go']['main']['App']['SetSMBFirewallEnabled'](arg1);
+}
+
+export function SetSMBServiceRunning(arg1) {
+  return window['go']['main']['App']['SetSMBServiceRunning'](arg1);
 }
 
 export function ToggleRule(arg1, arg2) {
