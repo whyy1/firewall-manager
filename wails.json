@@ -9,5 +9,11 @@
   "author": {
     "name": "whyy1",
     "email": "1006307055@qq.com"
+  },
+  "info": {
+    "companyName": "whyy1",
+    "productName": "Firewall Manager",
+    "productVersion": "0.4.1",
+    "comments": "Windows firewall and SMB management"
   }
 }
