@@ -109,3 +109,7 @@ export function SetSMBServiceRunning(arg1) {
 export function ToggleRule(arg1, arg2) {
   return window['go']['main']['App']['ToggleRule'](arg1, arg2);
 }
+
+export function UpdateRule(arg1, arg2) {
+  return window['go']['main']['App']['UpdateRule'](arg1, arg2);
+}

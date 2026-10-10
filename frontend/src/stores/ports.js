@@ -1,26 +1,5 @@
 import {reactive} from 'vue'
 import {GetServicePorts, ChangeServicePort} from '../../wailsjs/go/main/App'
+import {createPortState} from './port_state.js'
 
-export const portStore = reactive({
-  ports: [],
-  loading: false,
-  error: null,
-
-  async fetchPorts() {
-    this.loading = true
-    this.error = null
-    try {
-      this.ports = await GetServicePorts()
-    } catch (e) {
-      this.error = String(e)
-      this.ports = []
-    } finally {
-      this.loading = false
-    }
-  },
-
-  async changePort(serviceName, newPort) {
-    await ChangeServicePort(serviceName, newPort)
-    await this.fetchPorts()
-  },
-})
+export const portStore = reactive(createPortState({GetServicePorts, ChangeServicePort}))

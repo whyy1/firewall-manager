@@ -1,4 +1,5 @@
 import {reactive} from 'vue'
+import {loadLocalStatus, mutateAndRefresh, runExclusive} from './operations.js'
 import {
   CloseSMBSession,
   CreateSMBShare,
@@ -18,17 +19,21 @@ export const smbStore = reactive({
   overview: null,
   shares: [],
   localLoading: false,
-  localError: null,
+  overviewError: null,
+  sharesError: null,
+  localLoaded: false,
   localRequestVersion: 0,
 
   networkShares: [],
   networkLoading: false,
   networkError: null,
+  networkLoaded: false,
   networkRequestVersion: 0,
 
   sessions: [],
   sessionsLoading: false,
   sessionsError: null,
+  sessionsLoaded: false,
   sessionsRequestVersion: 0,
 
   firewall: null,
@@ -42,20 +47,17 @@ export const smbStore = reactive({
   async fetchLocal() {
     const version = ++this.localRequestVersion
     this.localLoading = true
-    this.localError = null
+    this.overviewError = null
+    this.sharesError = null
     try {
-      const [overview, shares] = await Promise.all([
-        GetSMBOverview(),
-        GetSMBShares(),
-      ])
+      const result = await loadLocalStatus(GetSMBOverview, GetSMBShares)
       if (version !== this.localRequestVersion) return
-      this.overview = overview
-      this.shares = Array.isArray(shares) ? shares : []
-    } catch (error) {
-      if (version !== this.localRequestVersion) return
-      this.localError = String(error)
-      this.overview = null
-      this.shares = []
+      if (!result.overviewError) this.overview = result.overview
+      if (!result.sharesError) this.shares = result.shares
+      this.localLoaded = true
+      this.overviewError = result.overviewError
+      this.sharesError = result.sharesError
+      return [result.overviewError, result.sharesError].filter(Boolean).join('；') || null
     } finally {
       if (version === this.localRequestVersion) this.localLoading = false
     }
@@ -69,10 +71,10 @@ export const smbStore = reactive({
       const shares = await DiscoverSMBNetworkShares()
       if (version !== this.networkRequestVersion) return
       this.networkShares = Array.isArray(shares) ? shares : []
+      this.networkLoaded = true
     } catch (error) {
       if (version !== this.networkRequestVersion) return
       this.networkError = String(error)
-      this.networkShares = []
     } finally {
       if (version === this.networkRequestVersion) this.networkLoading = false
     }
@@ -86,10 +88,12 @@ export const smbStore = reactive({
       const sessions = await GetSMBSessions()
       if (version !== this.sessionsRequestVersion) return
       this.sessions = Array.isArray(sessions) ? sessions : []
+      this.sessionsLoaded = true
+      return null
     } catch (error) {
       if (version !== this.sessionsRequestVersion) return
       this.sessionsError = String(error)
-      this.sessions = []
+      return this.sessionsError
     } finally {
       if (version === this.sessionsRequestVersion) this.sessionsLoading = false
     }
@@ -103,65 +107,58 @@ export const smbStore = reactive({
       const status = await GetSMBFirewallStatus()
       if (version !== this.firewallRequestVersion) return
       this.firewall = status
+      return null
     } catch (error) {
       if (version !== this.firewallRequestVersion) return
       this.firewallError = String(error)
-      this.firewall = null
+      return this.firewallError
     } finally {
       if (version === this.firewallRequestVersion) this.firewallLoading = false
     }
   },
 
   async runMutation(key, operation) {
-    if (this.mutationAction) throw new Error('已有 SMB 操作正在执行，请稍候')
-    this.mutationAction = key
-    try {
-      return await operation()
-    } finally {
-      if (this.mutationAction === key) this.mutationAction = ''
+    const localOverview = key === 'service' || key === 'smb1'
+    const localShares = key === 'create' || key.startsWith('remove:')
+    const sessions = key.startsWith('session:')
+    if ((localOverview && (this.localLoading || this.overviewError || !this.overview)) ||
+        (localShares && (this.localLoading || this.sharesError || !this.localLoaded)) ||
+        (sessions && (this.sessionsLoading || this.sessionsError || !this.sessionsLoaded)) ||
+        (key === 'firewall' && (this.firewallLoading || this.firewallError || !this.firewall))) {
+      throw new Error('当前数据尚未读取或刷新失败，请刷新确认最新状态后操作')
     }
+    return runExclusive(this, 'mutationAction', key, operation)
   },
 
   async setServiceRunning(running) {
-    return this.runMutation('service', async () => {
-      await SetSMBServiceRunning(running)
-      await this.fetchLocal()
-    })
+    return this.runMutation('service', () => mutateAndRefresh(
+      () => SetSMBServiceRunning(running), () => this.fetchLocal()))
   },
 
   async disableSMB1() {
-    return this.runMutation('smb1', async () => {
-      await DisableSMB1()
-      await this.fetchLocal()
-    })
+    if (this.overview?.configurationError) throw new Error('协议安全状态尚未读取，请启动服务并刷新后重试')
+    return this.runMutation('smb1', () => mutateAndRefresh(
+      DisableSMB1, () => this.fetchLocal()))
   },
 
   async createShare(request) {
-    return this.runMutation('create', async () => {
-      await CreateSMBShare(request)
-      await this.fetchLocal()
-    })
+    return this.runMutation('create', () => mutateAndRefresh(
+      () => CreateSMBShare(request), () => this.fetchLocal()))
   },
 
   async removeShare(name) {
-    return this.runMutation(`remove:${name}`, async () => {
-      await RemoveSMBShare(name)
-      await this.fetchLocal()
-    })
+    return this.runMutation(`remove:${name}`, () => mutateAndRefresh(
+      () => RemoveSMBShare(name), () => this.fetchLocal()))
   },
 
   async closeSession(sessionId) {
-    return this.runMutation(`session:${sessionId}`, async () => {
-      await CloseSMBSession(sessionId)
-      await this.fetchSessions()
-    })
+    return this.runMutation(`session:${sessionId}`, () => mutateAndRefresh(
+      () => CloseSMBSession(sessionId), () => this.fetchSessions()))
   },
 
   async setFirewallEnabled(enabled) {
-	return this.runMutation('firewall', async () => {
-	  await SetSMBFirewallEnabled(enabled)
-      await this.fetchFirewall()
-    })
+    return this.runMutation('firewall', () => mutateAndRefresh(
+      () => SetSMBFirewallEnabled(enabled), () => this.fetchFirewall()))
   },
 
   async openLocation(location) {

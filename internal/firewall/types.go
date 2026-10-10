@@ -18,15 +18,21 @@ const (
 
 // FirewallRule 防火墙规则
 type FirewallRule struct {
-	Name        string       `json:"name"`
-	Direction   RuleDirection `json:"direction"`
-	Action      RuleAction   `json:"action"`
-	Program     string       `json:"program"`
-	LocalAddr   string       `json:"localAddr"`
-	RemoteAddr  string       `json:"remoteAddr"`
-	LocalPort   string       `json:"localPort"`
-	RemotePort  string       `json:"remotePort"`
-	Protocol    string       `json:"protocol"`
-	Enabled     bool         `json:"enabled"`
-	Profile     string       `json:"profile"`
+	ID                    string        `json:"id"`
+	PolicyStoreSource     string        `json:"policyStoreSource"`
+	PolicyStoreSourceType string        `json:"policyStoreSourceType"`
+	CanEdit               bool          `json:"canEdit"`
+	ReadOnlyReason        string        `json:"readOnlyReason,omitempty"`
+	Name                  string        `json:"name"`
+	Direction             RuleDirection `json:"direction"`
+	Action                RuleAction    `json:"action"`
+	Program               string        `json:"program"`
+	LocalAddr             string        `json:"localAddr"`
+	RemoteAddr            string        `json:"remoteAddr"`
+	LocalPort             string        `json:"localPort"`
+	RemotePort            string        `json:"remotePort"`
+	Protocol              string        `json:"protocol"`
+	IcmpType              string        `json:"icmpType,omitempty"`
+	Enabled               bool          `json:"enabled"`
+	Profile               string        `json:"profile"`
 }

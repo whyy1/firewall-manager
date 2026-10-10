@@ -7,6 +7,8 @@ import (
 	"syscall"
 	"unicode/utf8"
 	"unsafe"
+
+	"firewall-manager/internal/admin"
 )
 
 // newHiddenCmd 创建隐藏控制台窗口的命令
@@ -74,15 +76,18 @@ func gbkToUTF8(data []byte) string {
 
 // GetRules 获取防火墙规则列表
 func GetRules(direction RuleDirection, limit int) ([]FirewallRule, error) {
+	return queryRulesWith(direction, limit, runUpdateScript)
+}
+
+func getRulesWith(direction RuleDirection, limit int, run func([]string) ([]byte, error)) ([]FirewallRule, error) {
 	dirStr := "In"
 	if direction == Outbound {
 		dirStr = "Out"
 	}
 
-	cmd := newHiddenCmd("netsh", "advfirewall", "firewall", "show", "rule", "name=all", "dir="+dirStr, "verbose")
-	output, err := cmd.CombinedOutput()
+	output, err := run([]string{"advfirewall", "firewall", "show", "rule", "name=all", "dir=" + dirStr, "verbose"})
 	if err != nil {
-		return nil, fmt.Errorf("执行 netsh 失败: %w\n%s", err, string(output))
+		return nil, fmt.Errorf("执行 netsh 失败: %w\n%s", err, gbkToUTF8(output))
 	}
 
 	// GBK → UTF-8
@@ -102,36 +107,34 @@ func GetRules(direction RuleDirection, limit int) ([]FirewallRule, error) {
 
 // AddRule 添加防火墙规则
 func AddRule(rule FirewallRule) error {
-	args := buildAddArgs(rule)
-	cmd := newHiddenCmd("netsh", args...)
-	output, err := cmd.CombinedOutput()
+	return addRuleWith(rule, admin.IsAdmin, runNetsh)
+}
+
+func addRuleWith(rule FirewallRule, isAdmin func() bool, run func([]string) ([]byte, error)) error {
+	normalized, err := normalizeRule(rule)
 	if err != nil {
-		return fmt.Errorf("添加规则失败: %w\n%s", err, string(output))
+		return fmt.Errorf("添加规则失败: %w", err)
+	}
+	if !isAdmin() {
+		return fmt.Errorf("添加规则失败: 此操作需要管理员权限")
+	}
+	output, err := run(buildAddArgs(normalized))
+	if err != nil {
+		return fmt.Errorf("添加规则失败: %w\n%s", err, gbkToUTF8(output))
 	}
 	return nil
 }
 
-// DeleteRule 删除防火墙规则
-func DeleteRule(name string) error {
+func runNetsh(args []string) ([]byte, error) {
+	return newHiddenCmd("netsh", args...).CombinedOutput()
+}
+
+// deleteRulesByName 仅供快捷放行撤销本应用建立的阻止规则。
+func deleteRulesByName(name string) error {
 	cmd := newHiddenCmd("netsh", "advfirewall", "firewall", "delete", "rule", "name="+name)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("删除规则失败: %w\n%s", err, string(output))
-	}
-	return nil
-}
-
-// ToggleRule 启用或禁用规则
-func ToggleRule(name string, enabled bool) error {
-	state := "yes"
-	if !enabled {
-		state = "no"
-	}
-	cmd := newHiddenCmd("netsh", "advfirewall", "firewall", "set", "rule",
-		"name="+name, "new", "enable="+state)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("切换规则状态失败: %w\n%s", err, string(output))
+		return fmt.Errorf("删除规则失败: %w\n%s", err, gbkToUTF8(output))
 	}
 	return nil
 }
@@ -141,7 +144,7 @@ func GetFirewallStatus() (bool, error) {
 	cmd := newHiddenCmd("netsh", "advfirewall", "show", "allprofiles", "state")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return false, fmt.Errorf("查询防火墙状态失败: %w\n%s", err, string(output))
+		return false, fmt.Errorf("查询防火墙状态失败: %w\n%s", err, gbkToUTF8(output))
 	}
 	// 同时检查原始字节和 UTF-8 转换结果
 	// "ON" 是纯 ASCII，无论 GBK 还是 UTF-8 都能匹配
@@ -160,7 +163,7 @@ func SetFirewallEnabled(enabled bool) error {
 	cmd := newHiddenCmd("netsh", "advfirewall", "set", "allprofiles", "state", state)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("设置防火墙状态失败: %w\n%s", err, string(output))
+		return fmt.Errorf("设置防火墙状态失败: %w\n%s", err, gbkToUTF8(output))
 	}
 	return nil
 }
@@ -170,7 +173,7 @@ func ResetFirewall() error {
 	cmd := newHiddenCmd("netsh", "advfirewall", "reset")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("重置防火墙失败: %w\n%s", err, string(output))
+		return fmt.Errorf("重置防火墙失败: %w\n%s", err, gbkToUTF8(output))
 	}
 	return nil
 }
@@ -197,7 +200,7 @@ func BlockApp(programPath string) error {
 // AllowApp 快捷放行程序
 func AllowApp(programPath string) error {
 	ruleName := fmt.Sprintf("FM_Block_%s", extractFileName(programPath))
-	return DeleteRule(ruleName)
+	return deleteRulesByName(ruleName)
 }
 
 // buildAddArgs 构建 netsh add 命令参数
@@ -248,6 +251,7 @@ func parseRules(output string, direction RuleDirection) ([]FirewallRule, error) 
 
 	lines := strings.Split(output, "\n")
 	for _, line := range lines {
+		line = strings.ReplaceAll(line, "：", ":")
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
@@ -323,7 +327,7 @@ func isNewRule(line string) bool {
 
 func normalizeKey(line string) string {
 	// 去掉全角空格 　 和 ASCII 空格
-	cleaned := strings.ReplaceAll(line, "　", "")
+	cleaned := strings.ReplaceAll(strings.ReplaceAll(line, "：", ":"), "　", "")
 	cleaned = strings.TrimSpace(cleaned)
 	lower := strings.ToLower(cleaned)
 	idx := strings.Index(lower, ":")

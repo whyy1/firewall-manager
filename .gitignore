@@ -33,3 +33,6 @@ frontend/package-lock.json
 # === 敏感信息 ===
 *.env
 .env.*
+
+# === UI test artifacts ===
+frontend/test-results/

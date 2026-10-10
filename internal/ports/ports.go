@@ -18,19 +18,20 @@ func newHiddenCmd(name string, args ...string) *exec.Cmd {
 
 // ServicePort 常用服务端口信息
 type ServicePort struct {
-	Name        string `json:"name"`        // 服务名称
-	ServiceName string `json:"serviceName"` // Windows 服务名
-	DefaultPort int    `json:"defaultPort"` // 默认端口
-	Protocol    string `json:"protocol"`    // 协议
-	Description string `json:"description"` // 描述
-	Running     bool   `json:"running"`     // 服务是否运行中
-	ListenPort  int    `json:"listenPort"`  // 实际监听端口（0=未监听）
+	Name          string `json:"name"`          // 服务名称
+	ServiceName   string `json:"serviceName"`   // Windows 服务名
+	DefaultPort   int    `json:"defaultPort"`   // 默认端口
+	Protocol      string `json:"protocol"`      // 协议
+	Description   string `json:"description"`   // 描述
+	Running       bool   `json:"running"`       // 服务是否运行中
+	ListenPort    int    `json:"listenPort"`    // 实际监听端口（0=未监听）
+	CanChangePort bool   `json:"canChangePort"` // 是否支持修改端口
 }
 
 // 预定义的常用 Windows 服务端口
 var commonServices = []ServicePort{
 	{Name: "RDP 远程桌面", ServiceName: "TermService", DefaultPort: 3389, Protocol: "tcp", Description: "Windows 远程桌面连接"},
-	{Name: "SMB 文件共享", ServiceName: "LanmanServer", DefaultPort: 445, Protocol: "tcp", Description: "SMB 网络文件共享"},
+	{Name: "SMB 文件共享", ServiceName: "LanmanServer", DefaultPort: 445, Protocol: "tcp", Description: "Windows SMB TCP 端口固定为 445，不能直接修改"},
 	{Name: "WinRM 远程管理", ServiceName: "WinRM", DefaultPort: 5985, Protocol: "tcp", Description: "Windows 远程管理服务"},
 	{Name: "DNS 域名解析", ServiceName: "Dnscache", DefaultPort: 53, Protocol: "udp", Description: "域名系统解析服务"},
 	{Name: "DHCP 客户端", ServiceName: "Dhcp", DefaultPort: 67, Protocol: "udp", Description: "动态主机配置协议"},
@@ -39,16 +40,32 @@ var commonServices = []ServicePort{
 }
 
 // GetServicePorts 获取常用端口列表，检测服务状态和实际监听端口
-func GetServicePorts() []ServicePort {
+func GetServicePorts() ([]ServicePort, error) {
+	return getServicePortsWith(func(name string, args ...string) ([]byte, error) {
+		return newHiddenCmd(name, args...).Output()
+	})
+}
+
+func getServicePortsWith(run func(string, ...string) ([]byte, error)) ([]ServicePort, error) {
 	result := make([]ServicePort, len(commonServices))
 	copy(result, commonServices)
 
-	svcPids := getServicePids()
-	pidPorts := getPidPorts()
-	portPids := getPortPids()
+	svcPids, err := getServicePids(run)
+	if err != nil {
+		return nil, err
+	}
+	pidPorts, err := getPidPorts(run)
+	if err != nil {
+		return nil, err
+	}
+	portPids, err := getPortPids(run)
+	if err != nil {
+		return nil, err
+	}
 
 	for i := range result {
 		svc := &result[i]
+		svc.CanChangePort = svc.ServiceName == "TermService" || svc.ServiceName == "WinRM"
 		pid, ok := svcPids[svc.ServiceName]
 		svc.Running = ok && pid > 0
 
@@ -65,73 +82,14 @@ func GetServicePorts() []ServicePort {
 		}
 	}
 
-	return result
+	return result, nil
 }
 
-// ChangeServicePort 修改服务端口
-func ChangeServicePort(serviceName string, newPort int) error {
-	switch serviceName {
-	case "TermService":
-		return changeRDPPort(newPort)
-	case "WinRM":
-		return changeWinRMPort(newPort)
-	case "LanmanServer":
-		return changeSMBPort(newPort)
-	default:
-		return fmt.Errorf("暂不支持修改此服务的端口")
-	}
-}
-
-func changeRDPPort(newPort int) error {
-	cmd := newHiddenCmd("reg", "add",
-		`HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp`,
-		"/v", "PortNumber", "/t", "REG_DWORD", "/d", fmt.Sprintf("%d", newPort), "/f")
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("修改 RDP 端口失败: %w\n%s", err, string(output))
-	}
-	return restartService("TermService")
-}
-
-func changeWinRMPort(newPort int) error {
-	cmd := newHiddenCmd("winrm", "set", "winrm/config/Listener?Address=*+Transport=HTTP",
-		`@{Port="`+fmt.Sprintf("%d", newPort)+`"}`)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("修改 WinRM 端口失败: %w\n%s", err, string(output))
-	}
-	return restartService("WinRM")
-}
-
-func changeSMBPort(newPort int) error {
-	cmd := newHiddenCmd("reg", "add",
-		`HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanmanServer\Parameters`,
-		"/v", "SmbPort", "/t", "REG_DWORD", "/d", fmt.Sprintf("%d", newPort), "/f")
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("修改 SMB 端口失败: %w\n%s", err, string(output))
-	}
-	return restartService("LanmanServer")
-}
-
-func restartService(serviceName string) error {
-	stopCmd := newHiddenCmd("net", "stop", serviceName, "/y")
-	stopCmd.CombinedOutput()
-
-	startCmd := newHiddenCmd("net", "start", serviceName)
-	output, err := startCmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("重启服务 %s 失败: %w\n%s", serviceName, err, string(output))
-	}
-	return nil
-}
-
-func getServicePids() map[string]int {
+func getServicePids(run func(string, ...string) ([]byte, error)) (map[string]int, error) {
 	result := make(map[string]int)
-	cmd := newHiddenCmd("tasklist", "/svc", "/FO", "CSV", "/NH")
-	output, err := cmd.Output()
+	output, err := run("tasklist", "/svc", "/FO", "CSV", "/NH")
 	if err != nil {
-		return result
+		return nil, fmt.Errorf("检测服务进程失败: %w", err)
 	}
 
 	re := regexp.MustCompile(`"([^"]+)","(\d+)","([^"]*)"`)
@@ -145,15 +103,14 @@ func getServicePids() map[string]int {
 			}
 		}
 	}
-	return result
+	return result, nil
 }
 
-func getPidPorts() map[int][]int {
+func getPidPorts(run func(string, ...string) ([]byte, error)) (map[int][]int, error) {
 	result := make(map[int][]int)
-	cmd := newHiddenCmd("netstat", "-ano")
-	output, err := cmd.Output()
+	output, err := run("netstat", "-ano")
 	if err != nil {
-		return result
+		return nil, fmt.Errorf("检测监听端口失败: %w", err)
 	}
 
 	re := regexp.MustCompile(`\s+TCP\s+\S+?:(\d+)\s+\S+\s+LISTENING\s+(\d+)`)
@@ -165,15 +122,14 @@ func getPidPorts() map[int][]int {
 			result[pid] = append(result[pid], port)
 		}
 	}
-	return result
+	return result, nil
 }
 
-func getPortPids() map[int]int {
+func getPortPids(run func(string, ...string) ([]byte, error)) (map[int]int, error) {
 	result := make(map[int]int)
-	cmd := newHiddenCmd("netstat", "-ano")
-	output, err := cmd.Output()
+	output, err := run("netstat", "-ano")
 	if err != nil {
-		return result
+		return nil, fmt.Errorf("检测监听端口失败: %w", err)
 	}
 
 	re := regexp.MustCompile(`\s+TCP\s+\S+?:(\d+)\s+\S+\s+LISTENING\s+(\d+)`)
@@ -187,5 +143,5 @@ func getPortPids() map[int]int {
 			}
 		}
 	}
-	return result
+	return result, nil
 }

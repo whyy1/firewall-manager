@@ -1,6 +1,11 @@
 export namespace firewall {
 	
 	export class FirewallRule {
+	    id: string;
+	    policyStoreSource: string;
+	    policyStoreSourceType: string;
+	    canEdit: boolean;
+	    readOnlyReason?: string;
 	    name: string;
 	    direction: string;
 	    action: string;
@@ -10,6 +15,7 @@ export namespace firewall {
 	    localPort: string;
 	    remotePort: string;
 	    protocol: string;
+	    icmpType?: string;
 	    enabled: boolean;
 	    profile: string;
 	
@@ -19,6 +25,11 @@ export namespace firewall {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.policyStoreSource = source["policyStoreSource"];
+	        this.policyStoreSourceType = source["policyStoreSourceType"];
+	        this.canEdit = source["canEdit"];
+	        this.readOnlyReason = source["readOnlyReason"];
 	        this.name = source["name"];
 	        this.direction = source["direction"];
 	        this.action = source["action"];
@@ -28,6 +39,7 @@ export namespace firewall {
 	        this.localPort = source["localPort"];
 	        this.remotePort = source["remotePort"];
 	        this.protocol = source["protocol"];
+	        this.icmpType = source["icmpType"];
 	        this.enabled = source["enabled"];
 	        this.profile = source["profile"];
 	    }
@@ -45,6 +57,7 @@ export namespace ports {
 	    description: string;
 	    running: boolean;
 	    listenPort: number;
+	    canChangePort: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new ServicePort(source);
@@ -59,6 +72,7 @@ export namespace ports {
 	        this.description = source["description"];
 	        this.running = source["running"];
 	        this.listenPort = source["listenPort"];
+	        this.canChangePort = source["canChangePort"];
 	    }
 	}
 
@@ -151,6 +165,7 @@ export namespace smb {
 	    }
 	}
 	export class Overview {
+	    configurationError: string;
 	    serviceRunning: boolean;
 	    serviceStatus: string;
 	    startupType: string;
@@ -165,6 +180,7 @@ export namespace smb {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.configurationError = source["configurationError"];
 	        this.serviceRunning = source["serviceRunning"];
 	        this.serviceStatus = source["serviceStatus"];
 	        this.startupType = source["startupType"];

@@ -4,9 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
-	"os/exec"
-	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
@@ -161,11 +158,8 @@ func enumerateConnectedNetworkResources(found map[string]NetworkShare) error {
 
 func networkShareFromPath(path, comment, provider string) (NetworkShare, bool) {
 	cleaned := strings.TrimSpace(path)
-	if !strings.HasPrefix(cleaned, `\\`) {
-		return NetworkShare{}, false
-	}
-	parts := strings.Split(strings.TrimPrefix(cleaned, `\\`), `\`)
-	if len(parts) < 2 || parts[0] == "" || parts[1] == "" {
+	parts, ok := ordinaryUNCParts(cleaned)
+	if !ok {
 		return NetworkShare{}, false
 	}
 	uncPath := `\\` + parts[0] + `\` + parts[1]
@@ -183,37 +177,4 @@ func utf16PointerToString(pointer *uint16) string {
 		return ""
 	}
 	return windows.UTF16PtrToString(pointer)
-}
-
-// OpenLocation opens a validated local directory or UNC share in Explorer.
-func OpenLocation(location string) error {
-	location = strings.TrimSpace(location)
-	if location == "" {
-		return errors.New("打开位置不能为空")
-	}
-	if strings.HasPrefix(location, `\\`) {
-		if _, ok := networkShareFromPath(location, "", ""); !ok {
-			return errors.New("网络共享地址格式无效")
-		}
-	} else {
-		if !filepath.IsAbs(location) {
-			return errors.New("本机目录必须是绝对路径")
-		}
-		info, err := os.Stat(location)
-		if err != nil {
-			return fmt.Errorf("本机目录不可用: %w", err)
-		}
-		if !info.IsDir() {
-			return errors.New("打开位置必须是目录")
-		}
-	}
-	cmd := exec.Command("explorer.exe", filepath.Clean(location))
-	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-	if err := cmd.Start(); err != nil {
-		return fmt.Errorf("打开资源管理器失败: %w", err)
-	}
-	if err := cmd.Process.Release(); err != nil {
-		return fmt.Errorf("释放资源管理器进程句柄失败: %w", err)
-	}
-	return nil
 }

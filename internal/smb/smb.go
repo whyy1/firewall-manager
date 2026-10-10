@@ -14,8 +14,6 @@ import (
 	"syscall"
 	"time"
 	"unicode/utf8"
-
-	"firewall-manager/internal/admin"
 )
 
 const (
@@ -25,6 +23,7 @@ const (
 
 // Overview describes the local SMB server service and security configuration.
 type Overview struct {
+	ConfigurationError       string `json:"configurationError"`
 	ServiceRunning           bool   `json:"serviceRunning"`
 	ServiceStatus            string `json:"serviceStatus"`
 	StartupType              string `json:"startupType"`
@@ -61,11 +60,19 @@ var reservedShareNames = map[string]struct{}{
 }
 
 const overviewScript = `$service = Get-Service -Name LanmanServer -ErrorAction Stop
-$config = Get-SmbServerConfiguration -ErrorAction Stop
+$config = $null
+$configError = ''
+if ([string]$service.Status -eq 'Running') {
+  try { $config = Get-SmbServerConfiguration -ErrorAction Stop }
+  catch { $configError = '协议安全配置读取失败: ' + $_.Exception.Message }
+} else {
+  $configError = 'SMB 服务未运行，协议安全配置暂不可读取；启动服务后请刷新。'
+}
 [PSCustomObject]@{
   serviceRunning = [string]$service.Status -eq 'Running'
   serviceStatus = [string]$service.Status
   startupType = [string]$service.StartType
+  configurationError = $configError
   smb1Enabled = [bool]$config.EnableSMB1Protocol
   smb2Enabled = [bool]$config.EnableSMB2Protocol
   requireSecuritySignature = [bool]$config.RequireSecuritySignature
@@ -107,9 +114,9 @@ if ($share.Special) { throw 'System special shares cannot be removed' }
 $share | Remove-SmbShare -Force -Confirm:$false -ErrorAction Stop`
 
 // GetOverview returns the local SMB service and protocol state.
-func GetOverview(ctx context.Context) (Overview, error) {
+func (b backend) GetOverview(ctx context.Context) (Overview, error) {
 	var result Overview
-	output, err := runPowerShell(ctx, readTimeout, overviewScript, nil)
+	output, err := b.run(ctx, readTimeout, overviewScript, nil)
 	if err != nil {
 		return result, fmt.Errorf("查询 SMB 状态失败: %w", err)
 	}
@@ -120,8 +127,8 @@ func GetOverview(ctx context.Context) (Overview, error) {
 }
 
 // GetShares returns all local SMB shares, including protected system shares.
-func GetShares(ctx context.Context) ([]Share, error) {
-	output, err := runPowerShell(ctx, readTimeout, sharesScript, nil)
+func (b backend) GetShares(ctx context.Context) ([]Share, error) {
+	output, err := b.run(ctx, readTimeout, sharesScript, nil)
 	if err != nil {
 		return nil, fmt.Errorf("查询 SMB 共享失败: %w", err)
 	}
@@ -136,8 +143,8 @@ func GetShares(ctx context.Context) ([]Share, error) {
 }
 
 // SetServiceRunning starts or stops the Windows SMB server service.
-func SetServiceRunning(ctx context.Context, running bool) error {
-	if err := requireAdmin(); err != nil {
+func (b backend) SetServiceRunning(ctx context.Context, running bool) error {
+	if err := b.requireAdmin(); err != nil {
 		return err
 	}
 	script := "Stop-Service -Name LanmanServer -ErrorAction Stop"
@@ -146,27 +153,27 @@ func SetServiceRunning(ctx context.Context, running bool) error {
 		script = "Start-Service -Name LanmanServer -ErrorAction Stop"
 		operation = "启动"
 	}
-	if _, err := runPowerShell(ctx, writeTimeout, script, nil); err != nil {
+	if _, err := b.run(ctx, writeTimeout, script, nil); err != nil {
 		return fmt.Errorf("%s SMB 服务失败: %w", operation, err)
 	}
 	return nil
 }
 
 // DisableSMB1 disables the deprecated SMB1 server protocol.
-func DisableSMB1(ctx context.Context) error {
-	if err := requireAdmin(); err != nil {
+func (b backend) DisableSMB1(ctx context.Context) error {
+	if err := b.requireAdmin(); err != nil {
 		return err
 	}
 	script := "Set-SmbServerConfiguration -EnableSMB1Protocol $false -Force -Confirm:$false -ErrorAction Stop"
-	if _, err := runPowerShell(ctx, writeTimeout, script, nil); err != nil {
+	if _, err := b.run(ctx, writeTimeout, script, nil); err != nil {
 		return fmt.Errorf("关闭 SMB1 失败: %w", err)
 	}
 	return nil
 }
 
 // CreateShare creates a local share without changing filesystem permissions.
-func CreateShare(ctx context.Context, request CreateShareRequest) error {
-	if err := requireAdmin(); err != nil {
+func (b backend) CreateShare(ctx context.Context, request CreateShareRequest) error {
+	if err := b.requireAdmin(); err != nil {
 		return err
 	}
 	request = normalizeRequest(request)
@@ -179,15 +186,15 @@ func CreateShare(ctx context.Context, request CreateShareRequest) error {
 		"FWM_SMB_SHARE_DESCRIPTION": request.Description,
 		"FWM_SMB_ACCESS_MODE":       request.AccessMode,
 	}
-	if _, err := runPowerShell(ctx, writeTimeout, createShareScript, env); err != nil {
+	if _, err := b.run(ctx, writeTimeout, createShareScript, env); err != nil {
 		return fmt.Errorf("创建 SMB 共享失败: %w", err)
 	}
 	return nil
 }
 
 // RemoveShare removes a non-special local SMB share.
-func RemoveShare(ctx context.Context, name string) error {
-	if err := requireAdmin(); err != nil {
+func (b backend) RemoveShare(ctx context.Context, name string) error {
+	if err := b.requireAdmin(); err != nil {
 		return err
 	}
 	name = strings.TrimSpace(name)
@@ -198,14 +205,14 @@ func RemoveShare(ctx context.Context, name string) error {
 		return errors.New("不能删除系统保留共享")
 	}
 	env := map[string]string{"FWM_SMB_SHARE_NAME": name}
-	if _, err := runPowerShell(ctx, writeTimeout, removeShareScript, env); err != nil {
+	if _, err := b.run(ctx, writeTimeout, removeShareScript, env); err != nil {
 		return fmt.Errorf("删除 SMB 共享失败: %w", err)
 	}
 	return nil
 }
 
-func requireAdmin() error {
-	if !admin.IsAdmin() {
+func (b backend) requireAdmin() error {
+	if !b.isAdmin() {
 		return errors.New("此操作需要管理员权限")
 	}
 	return nil
@@ -227,10 +234,10 @@ func validateCreateRequest(request CreateShareRequest) error {
 	if isReservedShareName(request.Name) || strings.HasSuffix(request.Name, "$") {
 		return errors.New("共享名属于系统保留名称")
 	}
-	if !filepath.IsAbs(request.Path) {
-		return errors.New("共享目录必须是绝对路径")
+	if err := validateLocalDirectoryPath(request.Path); err != nil {
+		return err
 	}
-	info, err := os.Stat(request.Path)
+	info, err := localDirectoryInfo(request.Path)
 	if err != nil {
 		return fmt.Errorf("共享目录不可用: %w", err)
 	}
@@ -305,10 +312,10 @@ func commandResult(stdout, stderr []byte, runErr error) ([]byte, error) {
 		return stdout, nil
 	}
 	messages := make([]string, 0, 2)
-	if message := strings.TrimSpace(string(stderr)); message != "" {
+	if message := powerShellDiagnostic(stderr); message != "" {
 		messages = append(messages, message)
 	}
-	if message := strings.TrimSpace(string(stdout)); message != "" {
+	if message := powerShellDiagnostic(stdout); message != "" {
 		messages = append(messages, message)
 	}
 	if len(messages) == 0 {

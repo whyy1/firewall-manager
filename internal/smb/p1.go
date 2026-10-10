@@ -72,8 +72,8 @@ $enabled = $env:FWM_SMB_FIREWALL_ENABLED -eq 'true'
 $policy.EnableRuleGroup(2147483647, '@FirewallAPI.dll,-28502', $enabled)`
 
 // GetSessions returns inbound SMB sessions to this computer.
-func GetSessions(ctx context.Context) ([]Session, error) {
-	output, err := runPowerShell(ctx, readTimeout, sessionsScript, nil)
+func (b backend) GetSessions(ctx context.Context) ([]Session, error) {
+	output, err := b.run(ctx, readTimeout, sessionsScript, nil)
 	if err != nil {
 		return nil, fmt.Errorf("查询 SMB 会话失败: %w", err)
 	}
@@ -88,25 +88,35 @@ func GetSessions(ctx context.Context) ([]Session, error) {
 }
 
 // CloseSession forcibly closes one inbound SMB session.
-func CloseSession(ctx context.Context, sessionID string) error {
-	if err := requireAdmin(); err != nil {
+func (b backend) CloseSession(ctx context.Context, sessionID string) error {
+	if err := b.requireAdmin(); err != nil {
 		return err
 	}
 	sessionID = strings.TrimSpace(sessionID)
-	parsed, err := strconv.ParseUint(sessionID, 10, 64)
-	if err != nil || parsed == 0 {
-		return errors.New("SMB 会话 ID 无效")
+	if err := validateSessionID(sessionID); err != nil {
+		return err
 	}
-	if _, err := runPowerShell(ctx, writeTimeout, closeSessionScript, map[string]string{"FWM_SMB_SESSION_ID": sessionID}); err != nil {
+	if _, err := b.run(ctx, writeTimeout, closeSessionScript, map[string]string{"FWM_SMB_SESSION_ID": sessionID}); err != nil {
 		return fmt.Errorf("断开 SMB 会话失败: %w", err)
 	}
 	return nil
 }
 
+func validateSessionID(sessionID string) error {
+	if sessionID == "" || strings.IndexFunc(sessionID, func(char rune) bool { return char < '0' || char > '9' }) >= 0 {
+		return errors.New("SMB 会话 ID 无效")
+	}
+	parsed, err := strconv.ParseUint(sessionID, 10, 64)
+	if err != nil || parsed == 0 {
+		return errors.New("SMB 会话 ID 无效")
+	}
+	return nil
+}
+
 // GetFirewallStatus returns the built-in sharing firewall group state.
-func GetFirewallStatus(ctx context.Context) (FirewallStatus, error) {
+func (b backend) GetFirewallStatus(ctx context.Context) (FirewallStatus, error) {
 	var result FirewallStatus
-	output, err := runPowerShell(ctx, readTimeout, firewallStatusScript, nil)
+	output, err := b.run(ctx, readTimeout, firewallStatusScript, nil)
 	if err != nil {
 		return result, fmt.Errorf("查询 SMB 防火墙规则失败: %w", err)
 	}
@@ -117,14 +127,14 @@ func GetFirewallStatus(ctx context.Context) (FirewallStatus, error) {
 }
 
 // SetFirewallEnabled toggles the built-in File and Printer Sharing group for all profiles.
-func SetFirewallEnabled(ctx context.Context, enabled bool) error {
-	if err := requireAdmin(); err != nil {
+func (b backend) SetFirewallEnabled(ctx context.Context, enabled bool) error {
+	if err := b.requireAdmin(); err != nil {
 		return err
 	}
 	env := map[string]string{
 		"FWM_SMB_FIREWALL_ENABLED": strconv.FormatBool(enabled),
 	}
-	if _, err := runPowerShell(ctx, writeTimeout, setFirewallScript, env); err != nil {
+	if _, err := b.run(ctx, writeTimeout, setFirewallScript, env); err != nil {
 		return fmt.Errorf("设置 SMB 防火墙规则失败: %w", err)
 	}
 	return nil

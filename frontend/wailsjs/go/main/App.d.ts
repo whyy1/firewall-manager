@@ -16,7 +16,7 @@ export function CloseSMBSession(arg1:string):Promise<void>;
 
 export function CreateSMBShare(arg1:smb.CreateShareRequest):Promise<void>;
 
-export function DeleteRule(arg1:string):Promise<void>;
+export function DeleteRule(arg1:firewall.FirewallRule):Promise<void>;
 
 export function DisableSMB1():Promise<void>;
 
@@ -56,4 +56,6 @@ export function SetSMBFirewallEnabled(arg1:boolean):Promise<void>;
 
 export function SetSMBServiceRunning(arg1:boolean):Promise<void>;
 
-export function ToggleRule(arg1:string,arg2:boolean):Promise<void>;
+export function ToggleRule(arg1:firewall.FirewallRule,arg2:boolean):Promise<void>;
+
+export function UpdateRule(arg1:firewall.FirewallRule,arg2:firewall.FirewallRule):Promise<void>;

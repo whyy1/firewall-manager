@@ -1,153 +1,86 @@
 <script setup>
-import {onMounted, ref, watch} from 'vue'
-import {store} from '../stores/rules.js'
-import {NIcon, useMessage} from 'naive-ui'
-import {
-  ShieldCheckmarkOutline, SwapHorizontalOutline, SearchOutline, AddOutline,
-  SunnyOutline, MoonOutline, HardwareChipOutline, FolderOpenOutline,
-} from '@vicons/ionicons5'
+import {computed, nextTick, onMounted, ref, watch} from 'vue'
+import {NIcon} from 'naive-ui'
+import {ShieldCheckmarkOutline, SunnyOutline, MoonOutline, HardwareChipOutline, FolderOpenOutline} from '@vicons/ionicons5'
 import RuleList from './RuleList.vue'
 import RuleEditor from './RuleEditor.vue'
 import PortManager from './PortManager.vue'
 import SMBManager from './SMBManager.vue'
 import {IsAdmin} from '../../wailsjs/go/main/App'
 
-const props = defineProps({ isDark: Boolean })
+defineProps({isDark: Boolean})
 const emit = defineEmits(['toggleTheme'])
-
 const isAdmin = ref(false)
+const privilegeState = ref('checking')
+const privilegeError = ref('')
+const currentView = ref('rules')
 const showEditor = ref(false)
 const editingRule = ref(null)
-const currentView = ref('rules') // 'rules' | 'ports' | 'smb'
-const message = useMessage()
-
-// 搜索防抖
-const nameInput = ref('')
-const portInput = ref('')
-const addrInput = ref('')
-let t1, t2, t3
-watch(nameInput, v => { clearTimeout(t1); t1 = setTimeout(() => store.setNameQuery(v), 300) })
-watch(portInput, v => { clearTimeout(t2); t2 = setTimeout(() => store.setPortQuery(v), 300) })
-watch(addrInput, v => { clearTimeout(t3); t3 = setTimeout(() => store.setAddrQuery(v), 300) })
-
-// 协议选项
-const protocolOpts = [
-  { label: '全部协议', value: 'all' },
-  { label: 'TCP', value: 'tcp' },
-  { label: 'UDP', value: 'udp' },
-  { label: 'ICMPv4', value: 'icmpv4' },
-  { label: 'ICMPv6', value: 'icmpv6' },
-  { label: '任意', value: 'any' },
+const contentHost = ref(null)
+watch(currentView, async () => { await nextTick(); if (contentHost.value) contentHost.value.scrollTop = 0 })
+const navigation = [
+  {key: 'rules', label: '防火墙规则', icon: ShieldCheckmarkOutline},
+  {key: 'ports', label: '常用端口', icon: HardwareChipOutline},
+  {key: 'smb', label: 'SMB 文件共享', icon: FolderOpenOutline},
 ]
-
+const privilegeLabel = computed(() => privilegeState.value === 'checking' ? '检查权限中' : isAdmin.value ? '管理员模式' : '只读模式')
 onMounted(async () => {
-  isAdmin.value = await IsAdmin()
-  store.fetchRules()
+  try { isAdmin.value = await IsAdmin(); privilegeState.value = 'ready' }
+  catch (error) { privilegeState.value = 'error'; privilegeError.value = '权限检查失败: ' + String(error) }
 })
-
-function handleAdd() { editingRule.value = null; showEditor.value = true }
-function handleEdit(rule) { editingRule.value = rule; showEditor.value = true }
-function handleDirectionChange(dir) { currentView.value = 'rules'; store.setDirection(dir) }
-function handleViewChange(view) { currentView.value = view }
+function openEditor(rule = null) {
+  if (!isAdmin.value || showEditor.value) return
+  editingRule.value = rule
+  showEditor.value = true
+}
 </script>
 
 <template>
-  <div class="layout" :class="{ 'light-theme': !isDark }">
-    <header class="header">
-      <div class="header-left">
-        <NIcon :size="22" color="#4361ee"><ShieldCheckmarkOutline/></NIcon>
-        <span class="title">防火墙管理器</span>
-        <n-tag v-if="isAdmin" type="success" size="small" :bordered="false">管理员</n-tag>
-        <n-tag v-else type="warning" size="small" :bordered="false">需要管理员权限</n-tag>
-      </div>
-      <div class="header-right">
-        <template v-if="currentView === 'rules'">
-          <n-input v-model:value="nameInput" placeholder="规则名称" clearable size="small" style="width:140px">
-            <template #prefix><NIcon :size="14" color="#999"><SearchOutline/></NIcon></template>
-          </n-input>
-          <n-input v-model:value="portInput" placeholder="端口" clearable size="small" style="width:70px"/>
-          <n-input v-model:value="addrInput" placeholder="地址" clearable size="small" style="width:100px"/>
-          <n-select v-model:value="store.protocolFilter" :options="protocolOpts" size="small" style="width:100px" @update:value="store.setProtocolFilter"/>
-          <n-select v-model:value="store.actionFilter" :options="[{label:'全部动作',value:'all'},{label:'允许',value:'allow'},{label:'阻止',value:'block'}]" size="small" style="width:90px" @update:value="store.setActionFilter"/>
-          <n-select v-model:value="store.statusFilter" :options="[{label:'全部状态',value:'all'},{label:'已启用',value:'enabled'},{label:'已禁用',value:'disabled'}]" size="small" style="width:90px" @update:value="store.setStatusFilter"/>
-        </template>
-        <n-button text size="small" @click="emit('toggleTheme')" :title="isDark ? '切换亮色' : '切换暗色'">
-          <NIcon :size="20" :color="isDark ? '#f0c040' : '#666'"><MoonOutline v-if="isDark"/><SunnyOutline v-else/></NIcon>
-        </n-button>
-        <n-button v-if="currentView === 'rules'" type="primary" size="small" @click="handleAdd">
-          <template #icon><NIcon><AddOutline/></NIcon></template>添加规则
-        </n-button>
+  <div class="app-shell">
+    <header class="app-header">
+      <div class="brand"><div class="brand-mark"><NIcon :size="20"><ShieldCheckmarkOutline/></NIcon></div><span>防火墙管理器</span><span class="brand-caption">本机管理控制台</span></div>
+      <div class="header-actions">
+        <n-tag :type="isAdmin ? 'success' : 'default'" size="small" :bordered="false">{{ privilegeLabel }}</n-tag>
+        <n-button quaternary circle :aria-label="isDark ? '切换亮色主题' : '切换暗色主题'" :title="isDark ? '切换亮色主题' : '切换暗色主题'" @click="emit('toggleTheme')"><template #icon><NIcon :size="19"><SunnyOutline v-if="isDark"/><MoonOutline v-else/></NIcon></template></n-button>
       </div>
     </header>
-
-    <div class="body">
-      <aside class="sidebar">
-        <div class="nav-group">
-          <div class="nav-item" :class="{active: currentView === 'rules' && store.direction === 'in'}" @click="handleDirectionChange('in')">
-            <NIcon :size="18"><SwapHorizontalOutline/></NIcon><span>入站规则</span>
-          </div>
-          <div class="nav-item" :class="{active: currentView === 'rules' && store.direction === 'out'}" @click="handleDirectionChange('out')">
-            <NIcon :size="18"><SwapHorizontalOutline style="transform:rotate(180deg)"/></NIcon><span>出站规则</span>
-          </div>
-          <div class="nav-divider"></div>
-          <div class="nav-item" :class="{active: currentView === 'ports'}" @click="handleViewChange('ports')">
-            <NIcon :size="18"><HardwareChipOutline/></NIcon><span>常用端口</span>
-          </div>
-          <div class="nav-item" :class="{active: currentView === 'smb'}" @click="handleViewChange('smb')">
-            <NIcon :size="18"><FolderOpenOutline/></NIcon><span>SMB 文件共享</span>
-          </div>
-        </div>
-
-        <div class="sidebar-footer">
-          <div class="stat"><span class="stat-label">总规则数</span><span class="stat-value">{{ store.rules.length }}</span></div>
-          <div class="stat"><span class="stat-label">已启用</span><span class="stat-value enabled">{{ store.enabledCount }}</span></div>
-        </div>
+    <div class="app-body">
+      <aside class="app-sidebar">
+        <span class="nav-caption">管理功能</span>
+        <nav aria-label="功能导航"><button v-for="item in navigation" :key="item.key" class="nav-button" :class="{active: currentView === item.key}" :aria-label="item.label" :aria-current="currentView === item.key ? 'page' : undefined" :title="item.label" @click="currentView = item.key"><NIcon :size="20"><component :is="item.icon"/></NIcon><span class="nav-label">{{ item.label }}</span></button></nav>
+        <div class="sidebar-note"><span class="status-dot" :class="{admin: isAdmin}"/><span class="nav-label">{{ isAdmin ? '本机管理员操作' : '查看配置与状态' }}</span></div>
       </aside>
-
-      <main class="content">
-        <RuleList v-if="currentView === 'rules'" :is-dark="isDark" @edit="handleEdit"/>
-        <PortManager v-else-if="currentView === 'ports'" :is-dark="isDark"/>
-        <SMBManager v-else-if="currentView === 'smb'" :is-admin="isAdmin"/>
+      <main ref="contentHost" class="app-content" aria-label="管理内容">
+        <n-alert v-if="privilegeError" type="warning" :bordered="false">{{ privilegeError }}。写操作暂不可用。</n-alert>
+        <div v-else-if="privilegeState === 'ready' && !isAdmin" class="readonly-banner">当前为只读模式。需要修改配置时，请以管理员身份重新启动应用。</div>
+        <RuleList v-if="currentView === 'rules'" :is-dark="isDark" :is-admin="isAdmin" @add="openEditor()" @edit="openEditor"/>
+        <PortManager v-else-if="currentView === 'ports'" :is-admin="isAdmin"/>
+        <SMBManager v-else :is-admin="isAdmin"/>
       </main>
     </div>
-
-    <RuleEditor v-model:show="showEditor" :rule="editingRule"/>
+    <RuleEditor v-model:show="showEditor" :rule="editingRule" :is-admin="isAdmin"/>
   </div>
 </template>
 
 <style scoped>
-.layout { display: flex; flex-direction: column; width: 100%; height: 100vh; background: #121218; color: #e0e0e6; }
-.light-theme { background: #f5f5f5; color: #333; }
-.light-theme .header { background: #fff; border-bottom-color: rgba(0,0,0,0.08); }
-.light-theme .sidebar { background: #fafafa; border-right-color: rgba(0,0,0,0.08); }
-.light-theme .nav-item { color: #555; }
-.light-theme .nav-item:hover { background: rgba(0,0,0,0.04); color: #333; }
-.light-theme .nav-item.active { background: rgba(67,97,238,0.1); color: #4361ee; }
-.light-theme .nav-group-title { color: #999; }
-.light-theme .stat-label { color: #999; }
-.light-theme .stat-value { color: #666; }
-.light-theme .title { color: #333; }
-.light-theme .sidebar-footer { border-top-color: rgba(0,0,0,0.06); }
-.light-theme .content { background: #f5f5f5; }
-.light-theme :deep(.n-input) { --n-color: #fff; --n-text-color: #333; --n-border: 1px solid #ddd; --n-placeholder-color: #aaa; }
-.light-theme :deep(.n-base-selection) { --n-color: #fff; --n-text-color: #333; --n-border: 1px solid #ddd; }
-.header { display: flex; align-items: center; justify-content: space-between; padding: 0 20px; height: 52px; background: #18181f; border-bottom: 1px solid rgba(255,255,255,0.06); flex-shrink: 0; -webkit-app-region: drag; }
-.header-left { display: flex; align-items: center; gap: 10px; -webkit-app-region: no-drag; }
-.header-right { display: flex; align-items: center; gap: 8px; -webkit-app-region: no-drag; }
-.title { font-size: 15px; font-weight: 600; color: #e8e8ed; letter-spacing: 0.5px; }
-.body { display: flex; flex: 1; overflow: hidden; }
-.sidebar { width: 200px; background: #16161d; border-right: 1px solid rgba(255,255,255,0.06); display: flex; flex-direction: column; padding: 12px 0; flex-shrink: 0; }
-.nav-group { padding: 0 8px; margin-bottom: 8px; }
-.nav-group-title { font-size: 11px; color: #666; padding: 8px 12px 4px; text-transform: uppercase; letter-spacing: 1px; }
-.nav-divider { height: 1px; background: rgba(255,255,255,0.06); margin: 8px 12px; }
-.light-theme .nav-divider { background: rgba(0,0,0,0.06); }
-.nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 14px; border-radius: 6px; cursor: pointer; font-size: 13px; color: #aaa; transition: all 0.15s; }
-.nav-item:hover { background: rgba(255,255,255,0.04); color: #ddd; }
-.nav-item.active { background: rgba(67,97,238,0.15); color: #4361ee; }
-.sidebar-footer { margin-top: auto; padding: 16px; border-top: 1px solid rgba(255,255,255,0.06); display: flex; flex-direction: column; gap: 8px; }
-.stat { display: flex; justify-content: space-between; font-size: 12px; }
-.stat-label { color: #666; }
-.stat-value { color: #999; font-weight: 600; }
-.stat-value.enabled { color: #63e2b7; }
-.content { flex: 1; overflow: auto; padding: 16px 20px; }
+.app-shell { height: 100vh; display: flex; flex-direction: column; color: var(--color-text); background: var(--color-bg); }
+.app-header { height: 56px; padding: 0 22px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--color-border); background: var(--color-surface); flex-shrink: 0; }
+.brand, .header-actions { display: flex; align-items: center; gap: 12px; }
+.brand { font-size: 15px; font-weight: 650; }
+.brand-mark { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 9px; color: var(--color-primary); background: var(--color-primary-soft); }
+.brand-caption { font-size: 11px; color: var(--color-muted); font-weight: 400; border-left: 1px solid var(--color-border); padding-left: 12px; }
+.app-body { display: flex; flex: 1; min-height: 0; }
+.app-sidebar { width: 184px; padding: 22px 12px 14px; background: var(--color-surface); border-right: 1px solid var(--color-border); display: flex; flex-direction: column; flex-shrink: 0; }
+.nav-caption { padding: 0 12px 12px; color: var(--color-muted); font-size: 11px; }
+nav { display: flex; flex-direction: column; gap: 6px; }
+.nav-button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px; border: 0; border-radius: 8px; color: var(--color-muted); background: transparent; cursor: pointer; text-align: left; font: inherit; font-size: 13px; }
+.nav-button:hover { background: var(--color-hover); color: var(--color-text); }
+.nav-button.active { color: var(--color-primary); background: var(--color-primary-soft); font-weight: 600; }
+.sidebar-note { margin-top: auto; padding: 14px 10px 0; display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--color-muted); border-top: 1px solid var(--color-border); }
+.status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--color-muted); flex-shrink: 0; }
+.status-dot.admin { background: var(--color-success); }
+.app-content { flex: 1; min-width: 0; overflow: auto; padding: 22px 24px; }
+.readonly-banner { margin-bottom: 16px; padding: 10px 14px; font-size: 12px; background: var(--color-primary-soft); color: var(--color-text); border: 1px solid var(--color-border); border-radius: 8px; }
+@media (max-width: 1000px) { .app-sidebar { width: 64px; padding: 18px 8px; } .nav-label, .nav-caption { display: none; } .nav-button { justify-content: center; padding: 12px 0; } .sidebar-note { justify-content: center; padding: 14px 0 0; } .app-content { padding: 16px; } }
+@media (max-width: 850px) { .brand-caption { display: none; } .app-header { padding: 0 16px; } }
 </style>
